@@ -9,19 +9,19 @@ import (
 type readState int
 
 const (
-	stateWhitespace readState = iota
-	stateCommentWhitespace
+	stateInitial readState = iota
+	stateCommentInitial
 	stateComment
-	stateCommentOrWhitespace
-	stateContinueCommentOrWhitespace
-	stateSectionWhitespace
+	stateCommentOrElse
+	stateContinueCommentOrElse
+	stateSectionInitial
 	stateSection
-	stateSectionOrWhitespace
+	stateSectionOrElse
 	stateKey
-	stateKeyOrWhitespace
-	stateValueWhitespace
+	stateKeyOrElse
+	stateValueInitial
 	stateValue
-	stateValueOrWhitespace
+	stateValueOrElse
 )
 
 const DefaultBufferSize = 1 << 18
@@ -41,10 +41,9 @@ type Entry struct {
 
 type Reader struct {
 	BufferSize     int
+	reader         io.Reader
 	buffer         []byte
 	state          readState
-	reader         io.Reader
-	eof            bool
 	entries        []*readEntry
 	current        *readEntry
 	escape         bool
@@ -54,6 +53,7 @@ type Reader struct {
 	whitespace     []byte
 	commentApplied bool
 	sectionApplied bool
+	eof            bool
 }
 
 var EOFRemainder = errors.New("EOF: incomplete remainder data")
@@ -65,13 +65,12 @@ func closeSection(c byte) bool { return c == ']' }
 func startValue(c byte) bool   { return c == '=' }
 func whitespace(c byte) bool   { return c == '\t' || c == ' ' }
 func newline(c byte) bool      { return c == '\n' || c == '\r' }
-func whitespacenl(c byte) bool { return whitespace(c) || newline(c) }
 
 func NewReader(r io.Reader) *Reader {
 	return &Reader{
 		BufferSize: DefaultBufferSize,
-		state:      stateWhitespace,
-		reader:     r}
+		reader:     r,
+		state:      stateInitial}
 }
 
 func (r *Reader) startComment()           { r.comment = []byte{} }
@@ -82,6 +81,8 @@ func (r *Reader) appendWhitespace(c byte) { r.whitespace = append(r.whitespace, 
 func (r *Reader) clearWhitespace()        { r.whitespace = []byte{} }
 func (r *Reader) appendKey(c byte)        { r.current.key = append(r.current.key, c) }
 func (r *Reader) appendValue(c byte)      { r.current.val = append(r.current.val, c) }
+func (r *Reader) keyWhitespace()          { r.current.key = r.applyWhitespace(r.current.key) }
+func (r *Reader) valueWhitespace()        { r.current.val = r.applyWhitespace(r.current.val) }
 
 func (r *Reader) checkEscape(c byte) bool {
 	r.escape = false
@@ -109,42 +110,27 @@ func (r *Reader) completeEntry() {
 	r.current = nil
 }
 
-func (r *Reader) keyWhitespace() {
-	r.current.key = append(r.current.key, r.whitespace...)
+func (r *Reader) applyWhitespace(b []byte) []byte {
+	ws := r.whitespace
 	r.clearWhitespace()
-}
-
-func (r *Reader) valueWhitespace() {
-	r.current.val = append(r.current.val, r.whitespace...)
-	r.clearWhitespace()
+	return append(b, ws...)
 }
 
 func (r *Reader) commentWhitespace() {
+	c := r.applyWhitespace(r.comment)
 	if len(r.comment) > 0 {
-		r.comment = append(r.comment, r.whitespace...)
+		r.comment = c
 	}
-
-	r.clearWhitespace()
 }
 
 func (r *Reader) sectionWhitespace() {
+	s := r.applyWhitespace(r.section)
 	if len(r.section) > 0 {
-		r.section = append(r.section, r.whitespace...)
+		r.section = s
 	}
-
-	r.clearWhitespace()
 }
 
-func keysToString(keys [][]byte) []string {
-	s := make([]string, len(keys))
-	for i, k := range keys {
-		s[i] = string(k)
-	}
-
-	return s
-}
-
-func createKey(section, key []byte) []string {
+func mergeKey(section, key []byte) []string {
 	var entryKey []byte
 
 	if len(section) > 0 {
@@ -171,7 +157,7 @@ func (r *Reader) fetchEntry() *Entry {
 	next, r.entries = r.entries[0], r.entries[1:]
 
 	return &Entry{
-		Key:     createKey(next.section, next.key),
+		Key:     mergeKey(next.section, next.key),
 		Val:     string(next.val),
 		Comment: string(next.comment)}
 }
@@ -179,16 +165,16 @@ func (r *Reader) fetchEntry() *Entry {
 func (r *Reader) hasRemainderSection() bool {
 	switch r.state {
 	case
-		stateSectionWhitespace,
+		stateSectionInitial,
 		stateSection,
-		stateSectionOrWhitespace:
+		stateSectionOrElse:
 		return true
 	default:
 		return false
 	}
 }
 
-func (r *Reader) returnEof() (*Entry, error) {
+func (r *Reader) eofResult() (*Entry, error) {
 	err := io.EOF
 	hrs := r.hasRemainderSection()
 	if hrs || r.escapeNext {
@@ -204,9 +190,9 @@ func (r *Reader) returnEof() (*Entry, error) {
 
 		r.newEntry()
 		r.completeEntry()
-		r.comment = nil
-		r.section = nil
 		last = r.fetchEntry()
+		r.commentApplied = true
+		r.sectionApplied = true
 	}
 
 	return last, err
@@ -223,7 +209,7 @@ func (r *Reader) ReadEntry() (*Entry, error) {
 	}
 
 	if r.eof {
-		return r.returnEof()
+		return r.eofResult()
 	}
 
 	if len(r.buffer) != r.BufferSize {
@@ -237,7 +223,7 @@ func (r *Reader) ReadEntry() (*Entry, error) {
 
 	r.eof = err == io.EOF
 	if r.eof && l == 0 {
-		return r.returnEof()
+		return r.eofResult()
 	}
 
 	for i := 0; i < l; i++ {
@@ -256,7 +242,7 @@ func (r *Reader) ReadEntry() (*Entry, error) {
 	}
 
 	if r.eof {
-		return r.returnEof()
+		return r.eofResult()
 	}
 
 	return nil, nil
@@ -264,29 +250,29 @@ func (r *Reader) ReadEntry() (*Entry, error) {
 
 func (r *Reader) appendChar(c byte) {
 	switch r.state {
-	case stateWhitespace:
+	case stateInitial:
 		switch {
 		case r.escape:
 			r.state = stateKey
 			r.newEntry()
 			r.appendKey(c)
 		case whitespace(c):
-			r.state = stateWhitespace
+			r.state = stateInitial
 		case newline(c):
-			r.state = stateWhitespace
+			r.state = stateInitial
 		case startComment(c):
-			r.state = stateCommentWhitespace
+			r.state = stateCommentInitial
 			r.clearWhitespace()
 			r.startComment()
 		case openSection(c):
-			r.state = stateSectionWhitespace
+			r.state = stateSectionInitial
 			r.startSection()
 		case closeSection(c):
 			r.state = stateKey
 			r.newEntry()
 			r.appendKey(c)
 		case startValue(c):
-			r.state = stateValueWhitespace
+			r.state = stateValueInitial
 			r.newEntry()
 		default:
 			r.state = stateKey
@@ -294,16 +280,16 @@ func (r *Reader) appendChar(c byte) {
 			r.appendKey(c)
 		}
 
-	case stateCommentWhitespace:
+	case stateCommentInitial:
 		switch {
 		case r.escape:
 			r.state = stateComment
 			r.commentWhitespace()
 			r.appendComment(c)
 		case whitespace(c):
-			r.state = stateCommentWhitespace
+			r.state = stateCommentInitial
 		case newline(c):
-			r.state = stateContinueCommentOrWhitespace
+			r.state = stateContinueCommentOrElse
 			r.appendWhitespace(c)
 		case startComment(c):
 			r.state = stateComment
@@ -333,11 +319,11 @@ func (r *Reader) appendChar(c byte) {
 			r.state = stateComment
 			r.appendComment(c)
 		case whitespace(c):
-			r.state = stateCommentOrWhitespace
+			r.state = stateCommentOrElse
 			r.clearWhitespace()
 			r.appendWhitespace(c)
 		case newline(c):
-			r.state = stateContinueCommentOrWhitespace
+			r.state = stateContinueCommentOrElse
 			r.clearWhitespace()
 			r.appendWhitespace(c)
 		case startComment(c):
@@ -357,17 +343,17 @@ func (r *Reader) appendChar(c byte) {
 			r.appendComment(c)
 		}
 
-	case stateCommentOrWhitespace:
+	case stateCommentOrElse:
 		switch {
 		case r.escape:
 			r.state = stateComment
 			r.commentWhitespace()
 			r.appendComment(c)
 		case whitespace(c):
-			r.state = stateCommentOrWhitespace
+			r.state = stateCommentOrElse
 			r.appendWhitespace(c)
 		case newline(c):
-			r.state = stateContinueCommentOrWhitespace
+			r.state = stateContinueCommentOrElse
 			r.clearWhitespace()
 			r.appendWhitespace(c)
 		case startComment(c):
@@ -392,27 +378,27 @@ func (r *Reader) appendChar(c byte) {
 			r.appendComment(c)
 		}
 
-	case stateContinueCommentOrWhitespace:
+	case stateContinueCommentOrElse:
 		switch {
 		case r.escape:
 			r.state = stateKey
 			r.newEntry()
 			r.appendKey(c)
 		case whitespace(c):
-			r.state = stateContinueCommentOrWhitespace
+			r.state = stateContinueCommentOrElse
 		case newline(c):
-			r.state = stateContinueCommentOrWhitespace
+			r.state = stateContinueCommentOrElse
 		case startComment(c):
-			r.state = stateCommentWhitespace
+			r.state = stateCommentInitial
 		case openSection(c):
-			r.state = stateSectionWhitespace
+			r.state = stateSectionInitial
 			r.startSection()
 		case closeSection(c):
 			r.state = stateKey
 			r.newEntry()
 			r.appendKey(c)
 		case startValue(c):
-			r.state = stateValueWhitespace
+			r.state = stateValueInitial
 			r.newEntry()
 		default:
 			r.state = stateKey
@@ -420,15 +406,15 @@ func (r *Reader) appendChar(c byte) {
 			r.appendKey(c)
 		}
 
-	case stateSectionWhitespace:
+	case stateSectionInitial:
 		switch {
 		case r.escape:
 			r.state = stateSection
 			r.appendSection(c)
 		case whitespace(c):
-			r.state = stateSectionWhitespace
+			r.state = stateSectionInitial
 		case newline(c):
-			r.state = stateSectionWhitespace
+			r.state = stateSectionInitial
 		case startComment(c):
 			r.state = stateSection
 			r.appendSection(c)
@@ -436,7 +422,7 @@ func (r *Reader) appendChar(c byte) {
 			r.state = stateSection
 			r.appendSection(c)
 		case closeSection(c):
-			r.state = stateWhitespace
+			r.state = stateInitial
 		case startValue(c):
 			r.state = stateSection
 			r.appendSection(c)
@@ -451,11 +437,11 @@ func (r *Reader) appendChar(c byte) {
 			r.state = stateSection
 			r.appendSection(c)
 		case whitespace(c):
-			r.state = stateSectionOrWhitespace
+			r.state = stateSectionOrElse
 			r.clearWhitespace()
 			r.appendWhitespace(c)
 		case newline(c):
-			r.state = stateSectionOrWhitespace
+			r.state = stateSectionOrElse
 			r.clearWhitespace()
 			r.appendWhitespace(c)
 		case startComment(c):
@@ -465,7 +451,7 @@ func (r *Reader) appendChar(c byte) {
 			r.state = stateSection
 			r.appendSection(c)
 		case closeSection(c):
-			r.state = stateWhitespace
+			r.state = stateInitial
 		case startValue(c):
 			r.state = stateSection
 			r.appendSection(c)
@@ -474,17 +460,17 @@ func (r *Reader) appendChar(c byte) {
 			r.appendSection(c)
 		}
 
-	case stateSectionOrWhitespace:
+	case stateSectionOrElse:
 		switch {
 		case r.escape:
 			r.state = stateSection
 			r.sectionWhitespace()
 			r.appendSection(c)
 		case whitespace(c):
-			r.state = stateSectionOrWhitespace
+			r.state = stateSectionOrElse
 			r.appendWhitespace(c)
 		case newline(c):
-			r.state = stateSectionOrWhitespace
+			r.state = stateSectionOrElse
 			r.appendWhitespace(c)
 		case startComment(c):
 			r.state = stateSection
@@ -495,7 +481,7 @@ func (r *Reader) appendChar(c byte) {
 			r.sectionWhitespace()
 			r.appendSection(c)
 		case closeSection(c):
-			r.state = stateWhitespace
+			r.state = stateInitial
 		case startValue(c):
 			r.state = stateSection
 			r.sectionWhitespace()
@@ -512,50 +498,50 @@ func (r *Reader) appendChar(c byte) {
 			r.state = stateKey
 			r.appendKey(c)
 		case whitespace(c):
-			r.state = stateKeyOrWhitespace
+			r.state = stateKeyOrElse
 			r.clearWhitespace()
 			r.appendWhitespace(c)
 		case newline(c):
-			r.state = stateWhitespace
+			r.state = stateInitial
 			r.completeEntry()
 		case startComment(c):
-			r.state = stateCommentWhitespace
+			r.state = stateCommentInitial
 			r.completeEntry()
 			r.clearWhitespace()
 			r.startComment()
 		case openSection(c):
-			r.state = stateSectionWhitespace
+			r.state = stateSectionInitial
 			r.completeEntry()
 			r.startSection()
 		case closeSection(c):
 			r.state = stateKey
 			r.appendKey(c)
 		case startValue(c):
-			r.state = stateValueWhitespace
+			r.state = stateValueInitial
 		default:
 			r.state = stateKey
 			r.appendKey(c)
 		}
 
-	case stateKeyOrWhitespace:
+	case stateKeyOrElse:
 		switch {
 		case r.escape:
 			r.state = stateKey
 			r.keyWhitespace()
 			r.appendKey(c)
 		case whitespace(c):
-			r.state = stateKeyOrWhitespace
+			r.state = stateKeyOrElse
 			r.appendWhitespace(c)
 		case newline(c):
-			r.state = stateWhitespace
+			r.state = stateInitial
 			r.completeEntry()
 		case startComment(c):
-			r.state = stateCommentWhitespace
+			r.state = stateCommentInitial
 			r.completeEntry()
 			r.clearWhitespace()
 			r.startComment()
 		case openSection(c):
-			r.state = stateSectionWhitespace
+			r.state = stateSectionInitial
 			r.completeEntry()
 			r.startSection()
 		case closeSection(c):
@@ -563,37 +549,37 @@ func (r *Reader) appendChar(c byte) {
 			r.keyWhitespace()
 			r.appendKey(c)
 		case startValue(c):
-			r.state = stateValueWhitespace
+			r.state = stateValueInitial
 		default:
 			r.state = stateKey
 			r.keyWhitespace()
 			r.appendKey(c)
 		}
 
-	case stateValueWhitespace:
+	case stateValueInitial:
 		switch {
 		case r.escape:
 			r.state = stateValue
 			r.appendValue(c)
 		case whitespace(c):
-			r.state = stateValueWhitespace
+			r.state = stateValueInitial
 		case newline(c):
-			r.state = stateWhitespace
+			r.state = stateInitial
 			r.completeEntry()
 		case startComment(c):
-			r.state = stateCommentWhitespace
+			r.state = stateCommentInitial
 			r.completeEntry()
 			r.clearWhitespace()
 			r.startComment()
 		case openSection(c):
-			r.state = stateSectionWhitespace
+			r.state = stateSectionInitial
 			r.completeEntry()
 			r.startSection()
 		case closeSection(c):
 			r.state = stateValue
 			r.appendValue(c)
 		case startValue(c):
-			r.state = stateValueWhitespace
+			r.state = stateValueInitial
 			r.completeEntry()
 			r.newEntry()
 		default:
@@ -607,26 +593,26 @@ func (r *Reader) appendChar(c byte) {
 			r.state = stateValue
 			r.appendValue(c)
 		case whitespace(c):
-			r.state = stateValueOrWhitespace
+			r.state = stateValueOrElse
 			r.clearWhitespace()
 			r.appendWhitespace(c)
 		case newline(c):
-			r.state = stateWhitespace
+			r.state = stateInitial
 			r.completeEntry()
 		case startComment(c):
-			r.state = stateCommentWhitespace
+			r.state = stateCommentInitial
 			r.completeEntry()
 			r.clearWhitespace()
 			r.startComment()
 		case openSection(c):
-			r.state = stateSectionWhitespace
+			r.state = stateSectionInitial
 			r.completeEntry()
 			r.startSection()
 		case closeSection(c):
 			r.state = stateValue
 			r.appendValue(c)
 		case startValue(c):
-			r.state = stateValueWhitespace
+			r.state = stateValueInitial
 			r.completeEntry()
 			r.newEntry()
 		default:
@@ -634,25 +620,25 @@ func (r *Reader) appendChar(c byte) {
 			r.appendValue(c)
 		}
 
-	case stateValueOrWhitespace:
+	case stateValueOrElse:
 		switch {
 		case r.escape:
 			r.state = stateValue
 			r.valueWhitespace()
 			r.appendValue(c)
 		case whitespace(c):
-			r.state = stateValueOrWhitespace
+			r.state = stateValueOrElse
 			r.appendWhitespace(c)
 		case newline(c):
-			r.state = stateWhitespace
+			r.state = stateInitial
 			r.completeEntry()
 		case startComment(c):
-			r.state = stateCommentWhitespace
+			r.state = stateCommentInitial
 			r.completeEntry()
 			r.clearWhitespace()
 			r.startComment()
 		case openSection(c):
-			r.state = stateSectionWhitespace
+			r.state = stateSectionInitial
 			r.completeEntry()
 			r.startSection()
 		case closeSection(c):
@@ -660,7 +646,7 @@ func (r *Reader) appendChar(c byte) {
 			r.valueWhitespace()
 			r.appendValue(c)
 		case startValue(c):
-			r.state = stateValueWhitespace
+			r.state = stateValueInitial
 			r.completeEntry()
 			r.newEntry()
 		default:
