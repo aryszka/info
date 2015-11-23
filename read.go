@@ -56,7 +56,7 @@ type Reader struct {
 	eof            bool
 }
 
-var EOFRemainder = errors.New("EOF: incomplete remainder data")
+var EOFIncomplete = errors.New("EOF: incomplete data")
 
 func escape(c byte) bool       { return c == '\\' }
 func startComment(c byte) bool { return c == ';' || c == '#' }
@@ -186,12 +186,11 @@ func (r *Reader) eofResult() (*Entry, error) {
 	err := io.EOF
 	hrs := r.hasRemainderSection()
 	if hrs || r.escapeNext {
-		err = EOFRemainder
+		err = EOFIncomplete
 	}
 
 	var last *Entry
 	if r.current != nil {
-		println("an entry?")
 		r.completeEntry()
 		last = r.fetchEntry()
 	} else if (!r.commentApplied && len(r.comment) > 0) ||
@@ -257,6 +256,7 @@ func (r *Reader) ReadEntry() (*Entry, error) {
 	return nil, nil
 }
 
+// choose the right scroll speed and enjoy the animation
 func (r *Reader) appendChar(c byte) {
 	switch r.state {
 	case stateInitial:
@@ -301,9 +301,7 @@ func (r *Reader) appendChar(c byte) {
 			r.state = stateContinueCommentOrElse
 			r.appendWhitespace(c)
 		case startComment(c):
-			r.state = stateComment
-			r.commentWhitespace()
-			r.appendComment(c)
+			r.state = stateCommentInitial
 		case openSection(c):
 			r.state = stateComment
 			r.commentWhitespace()

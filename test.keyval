@@ -1,3 +1,7 @@
 This is a valid keyval document.
 It has three keys.
 The keys are: 'This is a valid keyval document.', 'It has three keys.', and # Oops...
+
+#
+# No recursion.
+#
