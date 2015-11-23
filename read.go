@@ -3,6 +3,7 @@ package keyval
 import (
 	"errors"
 	"io"
+	"strings"
 )
 
 type readState int
@@ -26,30 +27,33 @@ const (
 const DefaultBufferSize = 1 << 18
 
 type readEntry struct {
-	key     [][]byte
-	val     []byte
 	comment []byte
+	section []byte
+	key     []byte
+	val     []byte
 }
 
-type KeyVal struct {
+type Entry struct {
 	Key     []string
 	Val     string
 	Comment string
 }
 
 type Reader struct {
-	BufferSize int
-	buffer     []byte
-	state      readState
-	reader     io.Reader
-	eof        bool
-	entries    []*readEntry
-	current    *readEntry
-	escape     bool
-	escapeNext bool
-	comment    []byte
-	section    []byte
-	whitespace []byte
+	BufferSize     int
+	buffer         []byte
+	state          readState
+	reader         io.Reader
+	eof            bool
+	entries        []*readEntry
+	current        *readEntry
+	escape         bool
+	escapeNext     bool
+	comment        []byte
+	section        []byte
+	whitespace     []byte
+	commentApplied bool
+	sectionApplied bool
 }
 
 var EOFRemainder = errors.New("EOF: incomplete remainder data")
@@ -63,7 +67,7 @@ func whitespace(c byte) bool   { return c == '\t' || c == ' ' }
 func newline(c byte) bool      { return c == '\n' || c == '\r' }
 func whitespacenl(c byte) bool { return whitespace(c) || newline(c) }
 
-func New(r io.Reader) *Reader {
+func NewReader(r io.Reader) *Reader {
 	return &Reader{
 		BufferSize: DefaultBufferSize,
 		state:      stateWhitespace,
@@ -76,6 +80,8 @@ func (r *Reader) startSection()           { r.section = []byte{} }
 func (r *Reader) appendSection(c byte)    { r.section = append(r.section, c) }
 func (r *Reader) appendWhitespace(c byte) { r.whitespace = append(r.whitespace, c) }
 func (r *Reader) clearWhitespace()        { r.whitespace = []byte{} }
+func (r *Reader) appendKey(c byte)        { r.current.key = append(r.current.key, c) }
+func (r *Reader) appendValue(c byte)      { r.current.val = append(r.current.val, c) }
 
 func (r *Reader) checkEscape(c byte) bool {
 	r.escape = false
@@ -90,12 +96,12 @@ func (r *Reader) checkEscape(c byte) bool {
 }
 
 func (r *Reader) newEntry() {
-	r.current = &readEntry{comment: r.comment}
-	if len(r.section) == 0 {
-		r.current.key = [][]byte{[]byte{}}
-	} else {
-		r.current.key = [][]byte{r.section, []byte{}}
-	}
+	r.current = &readEntry{
+		section: r.section,
+		comment: r.comment}
+
+	r.commentApplied = true
+	r.sectionApplied = true
 }
 
 func (r *Reader) completeEntry() {
@@ -103,27 +109,13 @@ func (r *Reader) completeEntry() {
 	r.current = nil
 }
 
-func (r *Reader) appendKey(c byte) {
-	le := r.entries[len(r.entries)-1]
-	lki := len(le.key) - 1
-	le.key = append(le.key[:lki], append(le.key[lki], c))
-}
-
 func (r *Reader) keyWhitespace() {
-	le := r.entries[len(r.entries)-1]
-	lki := len(le.key) - 1
-	le.key = append(le.key[:lki], append(le.key[lki], r.whitespace...))
+	r.current.key = append(r.current.key, r.whitespace...)
 	r.clearWhitespace()
 }
 
-func (r *Reader) appendValue(c byte) {
-	last := r.entries[len(r.entries)-1]
-	last.val = append(last.val, c)
-}
-
 func (r *Reader) valueWhitespace() {
-	le := r.entries[len(r.entries)-1]
-	le.val = append(le.val, r.whitespace...)
+	r.current.val = append(r.current.val, r.whitespace...)
 	r.clearWhitespace()
 }
 
@@ -152,7 +144,25 @@ func keysToString(keys [][]byte) []string {
 	return s
 }
 
-func (r *Reader) fetchEntry() *KeyVal {
+func createKey(section, key []byte) []string {
+	var entryKey []byte
+
+	if len(section) > 0 {
+		entryKey = section
+	}
+
+	if len(key) > 0 {
+		if len(entryKey) > 0 {
+			entryKey = append(entryKey, '.')
+		}
+
+		entryKey = append(entryKey, key...)
+	}
+
+	return strings.Split(string(entryKey), ".")
+}
+
+func (r *Reader) fetchEntry() *Entry {
 	if len(r.entries) == 0 {
 		return nil
 	}
@@ -160,13 +170,13 @@ func (r *Reader) fetchEntry() *KeyVal {
 	var next *readEntry
 	next, r.entries = r.entries[0], r.entries[1:]
 
-	return &KeyVal{
-		Key:     keysToString(next.key),
+	return &Entry{
+		Key:     createKey(next.section, next.key),
 		Val:     string(next.val),
 		Comment: string(next.comment)}
 }
 
-func (r *Reader) hasRemainder() bool {
+func (r *Reader) hasRemainderSection() bool {
 	switch r.state {
 	case
 		stateSectionWhitespace,
@@ -178,18 +188,20 @@ func (r *Reader) hasRemainder() bool {
 	}
 }
 
-func (r *Reader) returnEof() (*KeyVal, error) {
+func (r *Reader) returnEof() (*Entry, error) {
 	err := io.EOF
-	hr := r.hasRemainder()
-	if hr {
+	hrs := r.hasRemainderSection()
+	if hrs || r.escapeNext {
 		err = EOFRemainder
 	}
 
-	var last *KeyVal
+	var last *Entry
 	if r.current != nil {
 		r.completeEntry()
 		last = r.fetchEntry()
-	} else if len(r.comment) > 0 || (!hr && len(r.section) > 0) {
+	} else if (!r.commentApplied && len(r.comment) > 0) ||
+		(!r.sectionApplied && !hrs && len(r.section) > 0) {
+
 		r.newEntry()
 		r.completeEntry()
 		r.comment = nil
@@ -200,7 +212,7 @@ func (r *Reader) returnEof() (*KeyVal, error) {
 	return last, err
 }
 
-func (r *Reader) ReadEntry() (*KeyVal, error) {
+func (r *Reader) ReadEntry() (*Entry, error) {
 	if r.reader == nil {
 		return nil, nil
 	}
@@ -219,7 +231,7 @@ func (r *Reader) ReadEntry() (*KeyVal, error) {
 	}
 
 	l, err := r.reader.Read(r.buffer)
-	if err != io.EOF {
+	if err != nil && err != io.EOF {
 		return nil, err
 	}
 
@@ -582,6 +594,8 @@ func (r *Reader) appendChar(c byte) {
 			r.appendValue(c)
 		case startValue(c):
 			r.state = stateValueWhitespace
+			r.completeEntry()
+			r.newEntry()
 		default:
 			r.state = stateValue
 			r.appendValue(c)
@@ -613,6 +627,8 @@ func (r *Reader) appendChar(c byte) {
 			r.appendValue(c)
 		case startValue(c):
 			r.state = stateValueWhitespace
+			r.completeEntry()
+			r.newEntry()
 		default:
 			r.state = stateValue
 			r.appendValue(c)
@@ -645,6 +661,8 @@ func (r *Reader) appendChar(c byte) {
 			r.appendValue(c)
 		case startValue(c):
 			r.state = stateValueWhitespace
+			r.completeEntry()
+			r.newEntry()
 		default:
 			r.state = stateValue
 			r.valueWhitespace()

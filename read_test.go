@@ -20,7 +20,7 @@ func (b *infiniteBuffer) Read(data []byte) (int, error) {
 }
 
 func TestNothingToRead(t *testing.T) {
-	r := New(nil)
+	r := NewReader(nil)
 	e, err := r.ReadEntry()
 	if e != nil || err != nil {
 		t.Error("failed not to read")
@@ -28,7 +28,7 @@ func TestNothingToRead(t *testing.T) {
 }
 
 func TestEmptyReader(t *testing.T) {
-	r := New(&infiniteBuffer{bytes.NewBuffer(nil)})
+	r := NewReader(&infiniteBuffer{bytes.NewBuffer(nil)})
 	e, err := r.ReadEntry()
 	if e != nil || err != nil {
 		t.Error("failed not to read")
@@ -36,7 +36,7 @@ func TestEmptyReader(t *testing.T) {
 }
 
 func TestEmptyReaderEof(t *testing.T) {
-	r := New(bytes.NewBuffer(nil))
+	r := NewReader(bytes.NewBuffer(nil))
 	e, err := r.ReadEntry()
 	if e != nil || err != io.EOF {
 		t.Error("failed to read eof")
