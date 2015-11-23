@@ -73,9 +73,7 @@ func NewReader(r io.Reader) *Reader {
 		state:      stateInitial}
 }
 
-func (r *Reader) startComment()           { r.comment = []byte{} }
 func (r *Reader) appendComment(c byte)    { r.comment = append(r.comment, c) }
-func (r *Reader) startSection()           { r.section = []byte{} }
 func (r *Reader) appendSection(c byte)    { r.section = append(r.section, c) }
 func (r *Reader) appendWhitespace(c byte) { r.whitespace = append(r.whitespace, c) }
 func (r *Reader) clearWhitespace()        { r.whitespace = []byte{} }
@@ -94,6 +92,16 @@ func (r *Reader) checkEscape(c byte) bool {
 	}
 
 	return r.escapeNext
+}
+
+func (r *Reader) startComment() {
+	r.comment = []byte{}
+	r.commentApplied = false
+}
+
+func (r *Reader) startSection() {
+	r.section = []byte{}
+	r.sectionApplied = false
 }
 
 func (r *Reader) newEntry() {
@@ -183,6 +191,7 @@ func (r *Reader) eofResult() (*Entry, error) {
 
 	var last *Entry
 	if r.current != nil {
+		println("an entry?")
 		r.completeEntry()
 		last = r.fetchEntry()
 	} else if (!r.commentApplied && len(r.comment) > 0) ||
