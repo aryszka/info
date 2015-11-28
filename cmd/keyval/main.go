@@ -2,18 +2,18 @@ package main
 
 import (
 	"fmt"
-	"github.com/aryszka/keyval"
+	"github.com/aryszka/info"
 	"os"
 	"strings"
 )
 
-func printKeyVal(kv *keyval.Entry) {
+func printKeyVal(kv *info.Entry) {
 	key := strings.Join(kv.Key, ".")
 	fmt.Printf("# %s\n%s: %s\n\n", kv.Comment, key, kv.Val)
 }
 
 func main() {
-	r := keyval.NewReader(os.Stdin)
+	r := info.NewReader(os.Stdin)
 	for {
 		kv, err := r.ReadEntry()
 		if kv != nil {
