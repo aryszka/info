@@ -9,7 +9,7 @@ import (
 
 func printKeyVal(kv *keyval.Entry) {
 	key := strings.Join(kv.Key, ".")
-	fmt.Printf("# %s\n%s = %s\n\n", kv.Comment, key, kv.Val)
+	fmt.Printf("# %s\n%s: %s\n\n", kv.Comment, key, kv.Val)
 }
 
 func main() {
