@@ -47,7 +47,7 @@ return EOFIncomplete if something left there
 
 tcp is needed, because it is not self-correcting and always valid, and the order matters, too
 
-rename to info format? .info?
+rename to info format? .info? taken by the info documentation tool
 
 it is well defined
 
