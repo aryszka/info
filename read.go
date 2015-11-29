@@ -5,7 +5,7 @@ import (
 	"io"
 )
 
-const DefaultReadBufferSize = 1 << 18
+const DefaultReadBufferSize = 1 << 7
 
 type readEntry struct {
 	comment []byte

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/aryszka/keyval"
+	"io"
 	"log"
 	"os"
 	"strings"
@@ -14,17 +15,20 @@ func printKeyVal(kv *keyval.Entry) {
 	fmt.Printf("# %s\n%s: %s\n\n", kv.Comment, key, kv.Val)
 }
 
-func read() {
+func read() error {
 	r := keyval.NewReader(os.Stdin)
 	for {
 		kv, err := r.ReadEntry()
+		if err != nil && err != io.EOF {
+			return err
+		}
+
 		if kv != nil {
 			printKeyVal(kv)
 		}
 
 		if err != nil {
-			fmt.Fprintln(os.Stderr, err)
-			return
+			return nil
 		}
 	}
 }
@@ -64,7 +68,7 @@ func writeJson() error {
 }
 
 func main() {
-	if err := writeJson(); err != nil {
+	if err := read(); err != nil {
 		log.Fatal(err)
 	}
 }
