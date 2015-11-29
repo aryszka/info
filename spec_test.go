@@ -981,6 +981,42 @@ func TestWriteSpec(t *testing.T) {
 			"[]\n" +
 			"key three = value three\n" +
 			"key four = value four\n",
+	}, {
+
+		// no comment inside a section declaration
+		[]*Entry{{Key: []string{"section #1", "key"}}},
+		"[section #1]\n" +
+			"key\n",
+	}, {
+
+		// leading and trailing whitespace in a key escaped
+		[]*Entry{{Key: []string{" \t a key \t "}}},
+		"\\ \t a key \t\\ \n",
+	}, {
+
+		// key spanning multiple lines
+		[]*Entry{{Key: []string{"a key\nin multiple lines"}}},
+		"a key\\\nin multiple lines\n",
+	}, {
+
+		// key with '.' in the name
+		[]*Entry{{Key: []string{"key.with.dot"}}},
+		"key\\.with\\.dot\n",
+	}, {
+
+		// leading and trailing whitespace in a value escaped
+		[]*Entry{{Val: " \t a value \t "}},
+		"= \\ \t a value \t\\ \n",
+	}, {
+
+		// value spanning multiple lines
+		[]*Entry{{Val: "a value\nin multiple lines"}},
+		"= a value\\\nin multiple lines\n",
+	}, {
+
+		// a value with '=' in it
+		[]*Entry{{Val: "value=with=equals"}},
+		"= value\\=with\\=equals\n",
 	}} {
 		buf := &bytes.Buffer{}
 		w := NewWriter(buf)
