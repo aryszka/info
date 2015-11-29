@@ -921,6 +921,66 @@ func TestWriteSpec(t *testing.T) {
 		// escape leading, tailing comment in comments
 		[]*Entry{{Comment: "# a comment"}},
 		"# \\# a comment\n",
+	}, {
+
+		// section in a comment
+		[]*Entry{{Comment: "[section]"}},
+		"# [section]\n",
+	}, {
+
+		// section in a section
+		[]*Entry{{Key: []string{"[section", "key"}}},
+		"[[section]\nkey\n",
+	}, {
+
+		// leading whitespace in a section
+		[]*Entry{{Key: []string{" \t section \t ", "key"}}},
+		"[\\ \t section \t\\ ]\nkey\n",
+	}, {
+
+		// leading newline in a section
+		[]*Entry{{Key: []string{"\nsection\n", "key"}}},
+		"[\\\nsection\\\n]\nkey\n",
+	}, {
+
+		// new line inside a section
+		[]*Entry{{Key: []string{"section\nwith a new line", "key"}}},
+		"[section\nwith a new line]\nkey\n",
+	}, {
+
+		// section with '.' in the name
+		[]*Entry{{Key: []string{"section.with.dot", "key"}}},
+		"[section\\.with\\.dot]\nkey\n",
+	}, {
+
+		// section of multiple entries
+		[]*Entry{
+			{Key: []string{"section one", "key one"}, Val: "value one"},
+			{Key: []string{"section one", "key two"}, Val: "value two"},
+			{Key: []string{"section two", "key three"}, Val: "value three"},
+			{Key: []string{"section two", "key four"}, Val: "value four"}},
+		"[section one]\n" +
+			"key one = value one\n" +
+			"key two = value two\n" +
+			"\n" +
+			"[section two]\n" +
+			"key three = value three\n" +
+			"key four = value four\n",
+	}, {
+
+		// discard a section
+		[]*Entry{
+			{Key: []string{"section one", "key one"}, Val: "value one"},
+			{Key: []string{"section one", "key two"}, Val: "value two"},
+			{Key: []string{"key three"}, Val: "value three"},
+			{Key: []string{"key four"}, Val: "value four"}},
+		"[section one]\n" +
+			"key one = value one\n" +
+			"key two = value two\n" +
+			"\n" +
+			"[]\n" +
+			"key three = value three\n" +
+			"key four = value four\n",
 	}} {
 		buf := &bytes.Buffer{}
 		w := NewWriter(buf)
