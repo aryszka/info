@@ -53,6 +53,21 @@ recommend/switch to use with bufio?
 
 after error, all calls should return the same error
 
+rename WriteLengthError to ErrWriteLength
+
+is the first return eofResult really needed? yes, but it needs a test
+
+document escaping: no \n but \<newline>
+
+shall we allow multiple values in a single line?
+homepage: https\://docs.npmjs.com/
+
+for whitespace, escape only the trimmed ones
+
+optional padding for the writer
+
+rename reader and writer, since they don't implement the interfaces
+
 
 Specification
 

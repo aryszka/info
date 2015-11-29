@@ -48,21 +48,23 @@ func write(w *keyval.Writer, keys []string, v interface{}) error {
 
 		return nil
 	default:
-		return w.WriteEntry(&keyval.Entry{Key: keys, Val: fmt.Sprint(v)})
+		return w.WriteEntry(&keyval.Entry{Key: keys, Val: fmt.Sprint(vt)})
 	}
 }
 
-func writeJson() {
+func writeJson() error {
 	d := json.NewDecoder(os.Stdin)
 	m := make(map[string]interface{})
 	if err := d.Decode(&m); err != nil {
-		log.Fatal(err)
+		return err
 	}
 
 	w := keyval.NewWriter(os.Stdout)
-	write(w, nil, m)
+	return write(w, nil, m)
 }
 
 func main() {
-	writeJson()
+	if err := writeJson(); err != nil {
+		log.Fatal(err)
+	}
 }

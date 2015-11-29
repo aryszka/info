@@ -44,8 +44,9 @@ var (
 		CommentCharAlt,
 		NewlineChar,
 		ReturnChar,
-		SpaceChar,
-		TabChar}
+		// SpaceChar,
+		// TabChar
+	}
 
 	escapeSection = []byte{
 		EscapeChar,

@@ -58,21 +58,19 @@ func (w *Writer) writeLine() error {
 }
 
 func escapeChars(b, ec []byte) []byte {
-	var ep []int
+	eb := make([]byte, 0, len(b))
+	en := 0
 	for i, c := range b {
 		for _, e := range ec {
 			if c == e {
-				ep = append(ep, i)
-				break
+				eb = append(eb, b[len(eb)-en:i]...)
+				eb = append(eb, EscapeChar, c)
+				en++
 			}
 		}
 	}
 
-	var eb []byte
-	for i, p := range ep {
-		eb = append(eb, append(b[len(eb)-i:p], EscapeChar, b[p])...)
-	}
-
+	eb = append(eb, b[len(eb)-en:]...)
 	return eb
 }
 
@@ -129,7 +127,7 @@ func (w *Writer) needWriteSection(section []string) bool {
 
 func (w *Writer) writeKeyEscaped(key []string, esc []byte) error {
 	first := true
-	for _, s := range w.section {
+	for _, s := range key {
 		if !first {
 			if err := w.write(KeySeparatorChar); err != nil {
 				return err
@@ -159,7 +157,7 @@ func (w *Writer) writeSection() error {
 }
 
 func hasKey(key []string) bool {
-	return false
+	return len(key) > 0
 }
 
 func (w *Writer) writeKey(key []string) error {
@@ -167,7 +165,7 @@ func (w *Writer) writeKey(key []string) error {
 }
 
 func (w *Writer) writeVal(val string) error {
-	if err := w.write(StartValueChar, SpaceChar); err != nil {
+	if err := w.write(SpaceChar, StartValueCharAlt, SpaceChar); err != nil {
 		return err
 	}
 
@@ -183,7 +181,13 @@ func (w *Writer) WriteEntry(e *Entry) error {
 		}
 	}
 
-	commentWritten := false
+	var (
+		commentWritten bool
+		sectionWritten bool
+		keyWritten     bool
+		valWritten     bool
+	)
+
 	if w.needWriteComment(e.Comment) {
 		w.comment = e.Comment
 
@@ -204,20 +208,25 @@ func (w *Writer) WriteEntry(e *Entry) error {
 		}
 
 		withError(w.writeSection, w.writeLine)
+		sectionWritten = true
 	}
 
 	hkey := hasKey(key)
 	if hkey {
 		withError(func() error { return w.writeKey(key) })
+		keyWritten = true
 	}
 
 	if len(e.Val) > 0 {
 		withError(func() error { return w.writeVal(e.Val) })
+		valWritten = true
 	}
 
-	if hkey || len(e.Val) > 0 {
+	if keyWritten || valWritten {
 		withError(w.writeLine)
 	}
+
+	w.started = w.started || commentWritten || sectionWritten || keyWritten || valWritten
 
 	return err
 }
