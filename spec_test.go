@@ -315,6 +315,18 @@ func TestSpec(t *testing.T) {
 		io.EOF,
 	}, {
 
+		// A standalone, empty comment discards the current comment for the following entries.
+		`# a comment
+         key one: value one
+         ##
+         key two: value two`,
+		false,
+		[]*Entry{
+			{Comment: "a comment", Key: []string{"key one"}, Val: "value one"},
+			{Key: []string{"key two"}, Val: "value two"}},
+		io.EOF,
+	}, {
+
 		// A comment closed by EOF gives an entry without a key and a value.
 		"# a comment",
 		false,

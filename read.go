@@ -5,19 +5,13 @@ import (
 	"io"
 )
 
-const DefaultBufferSize = 1 << 18
+const DefaultReadBufferSize = 1 << 18
 
 type readEntry struct {
 	comment []byte
 	section [][]byte
 	key     [][]byte
 	val     []byte
-}
-
-type Entry struct {
-	Key     []string
-	Val     string
-	Comment string
 }
 
 type Reader struct {
@@ -42,18 +36,18 @@ type Reader struct {
 
 var EOFIncomplete = errors.New("EOF: incomplete data")
 
-func escape(c byte) bool       { return c == '\\' }
-func startComment(c byte) bool { return c == ';' || c == '#' }
-func openSection(c byte) bool  { return c == '[' }
-func closeSection(c byte) bool { return c == ']' }
-func startValue(c byte) bool   { return c == ':' || c == '=' }
-func keySeparator(c byte) bool { return c == '.' }
-func whitespace(c byte) bool   { return c == '\t' || c == ' ' }
-func newline(c byte) bool      { return c == '\n' || c == '\r' }
+func escape(c byte) bool       { return c == EscapeChar }
+func startComment(c byte) bool { return c == CommentChar || c == CommentCharAlt }
+func openSection(c byte) bool  { return c == OpenSectionChar }
+func closeSection(c byte) bool { return c == CloseSectionChar }
+func startValue(c byte) bool   { return c == StartValueChar || c == StartValueCharAlt }
+func keySeparator(c byte) bool { return c == KeySeparatorChar }
+func whitespace(c byte) bool   { return c == SpaceChar || c == TabChar }
+func newline(c byte) bool      { return c == NewlineChar || c == ReturnChar }
 
 func NewReader(r io.Reader) *Reader {
 	return &Reader{
-		BufferSize: DefaultBufferSize,
+		BufferSize: DefaultReadBufferSize,
 		reader:     r,
 		state:      stateInitial}
 }

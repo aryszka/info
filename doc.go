@@ -51,6 +51,10 @@ rename to info format? .info? taken by the info documentation tool
 
 it is well defined
 
+recommend/switch to use with bufio?
+
+after error, all calls should return the same error
+
 
 Specification
 
@@ -129,6 +133,7 @@ Comment
 - In multiline comments, lines not starting with a '#' or a ';' are ignored.
 - An empty comment line starting with '#' or a ';', whitespace not counted, is part of the comment, if it is
   between two non-empty comment lines.
+- A standalone, empty comment discards the current comment for the following entries.
 - A comment belongs to all following entries until the next comment.
 - A comment closed by EOF gives an entry without a key and a value.
 - Only '\', '\n', ' ' and '\t' can be escaped in a comment.
