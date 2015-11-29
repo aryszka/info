@@ -42,3 +42,29 @@ func TestEmptyReaderEof(t *testing.T) {
 		t.Error("failed to read eof")
 	}
 }
+
+func TestSmallBufferSize(t *testing.T) {
+	buf := bytes.NewBufferString(`
+        just a long piece of text\
+        spanning multiple lines,\
+        more lines and bytes than\
+        the reader buffer size`)
+	r := NewReader(buf)
+	r.BufferSize = 2
+	for {
+		entry, err := r.ReadEntry()
+		if err != nil && err != io.EOF {
+			t.Error(err)
+			return
+		}
+
+		if entry == nil && err != io.EOF {
+			t.Error("failed to read long entry")
+			return
+		}
+
+		if err == io.EOF {
+			return
+		}
+	}
+}

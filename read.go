@@ -5,7 +5,7 @@ import (
 	"io"
 )
 
-const DefaultReadBufferSize = 1 << 7
+const DefaultReadBufferSize = 1 << 18
 
 type readEntry struct {
 	comment []byte
@@ -204,34 +204,38 @@ func (r *Reader) ReadEntry() (*Entry, error) {
 		r.buffer = make([]byte, r.BufferSize)
 	}
 
-	l, err := r.reader.Read(r.buffer)
-	if err != nil && err != io.EOF {
-		return nil, err
-	}
-
-	r.eof = err == io.EOF
-	if r.eof && l == 0 {
-		return r.eofResult()
-	}
-
-	for i := 0; i < l; i++ {
-		c := r.buffer[i]
-
-		if r.checkEscape(c) {
-			continue
+	for {
+		l, err := r.reader.Read(r.buffer)
+		if err != nil && err != io.EOF {
+			return nil, err
 		}
 
-		r.appendChar(c)
-	}
+		r.eof = err == io.EOF
+		if r.eof && l == 0 {
+			return r.eofResult()
+		}
 
-	next = r.fetchEntry()
-	if next != nil {
-		return next, nil
-	}
+		for i := 0; i < l; i++ {
+			c := r.buffer[i]
 
-	if r.eof {
-		return r.eofResult()
-	}
+			if r.checkEscape(c) {
+				continue
+			}
 
-	return nil, nil
+			r.appendChar(c)
+		}
+
+		next = r.fetchEntry()
+		if next != nil {
+			return next, nil
+		}
+
+		if r.eof {
+			return r.eofResult()
+		}
+
+		if l == 0 {
+			return nil, nil
+		}
+	}
 }

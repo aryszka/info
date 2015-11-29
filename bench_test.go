@@ -2,12 +2,11 @@ package keyval
 
 import (
 	"bytes"
+	"encoding/json"
+	"gopkg.in/yaml.v2"
 	"io"
 	"io/ioutil"
 	"testing"
-	// "os"
-	"encoding/json"
-	"gopkg.in/yaml.v2"
 )
 
 func BenchmarkReadKeyval(b *testing.B) {
@@ -18,12 +17,16 @@ func BenchmarkReadKeyval(b *testing.B) {
 	}
 
 	buf := bytes.NewBuffer(all)
-	// bufOut := bytes.NewBuffer(nil)
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
 		r := NewReader(buf)
-		// w := NewWriter(bufOut)
+
+		// to how much remembering the encoding/json code,
+		// a similar buffer size is used there. This value
+		// can be out-of-date.
+		r.BufferSize = 1 << 9
+
 		var collect []*Entry
 		for {
 			entry, err := r.ReadEntry()
@@ -42,11 +45,6 @@ func BenchmarkReadKeyval(b *testing.B) {
 			}
 		}
 	}
-
-	// b.StopTimer()
-	// if err := ioutil.WriteFile("test-check.k", bufOut.Bytes(), os.ModePerm); err != nil {
-	//     b.Error(err)
-	// }
 }
 
 func BenchmarkReadJson(b *testing.B) {
@@ -83,6 +81,40 @@ func BenchmarkReadYaml(b *testing.B) {
 		if err := yaml.Unmarshal(all, &o); err != nil && err != io.EOF {
 			b.Error(err)
 			break
+		}
+	}
+}
+
+func BenchmarkReadNoAlloc(b *testing.B) {
+	all, err := ioutil.ReadFile("test.k")
+	if err != nil {
+		b.Error(err)
+		return
+	}
+
+	buf := bytes.NewBuffer(all)
+	ibuf := make([]byte, DefaultReadBufferSize)
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		r := NewReader(buf)
+		r.buffer = ibuf
+
+		var collect []*Entry
+		for {
+			entry, err := r.ReadEntry()
+			if err != nil && err != io.EOF {
+				b.Error(err)
+				break
+			}
+
+			if entry != nil {
+				collect = append(collect, entry)
+			}
+
+			if err == io.EOF {
+				break
+			}
 		}
 	}
 }
