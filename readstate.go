@@ -1,4 +1,4 @@
-package info
+package keyval
 
 type readState int
 

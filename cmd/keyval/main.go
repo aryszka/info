@@ -3,19 +3,19 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/aryszka/info"
+	"github.com/aryszka/keyval"
 	"log"
 	"os"
 	"strings"
 )
 
-func printKeyVal(kv *info.Entry) {
+func printKeyVal(kv *keyval.Entry) {
 	key := strings.Join(kv.Key, ".")
 	fmt.Printf("# %s\n%s: %s\n\n", kv.Comment, key, kv.Val)
 }
 
 func read() {
-	r := info.NewReader(os.Stdin)
+	r := keyval.NewReader(os.Stdin)
 	for {
 		kv, err := r.ReadEntry()
 		if kv != nil {
@@ -29,7 +29,7 @@ func read() {
 	}
 }
 
-func write(w *info.Writer, keys []string, v interface{}) error {
+func write(w *keyval.Writer, keys []string, v interface{}) error {
 	switch vt := v.(type) {
 	case map[string]interface{}:
 		for k, vi := range vt {
@@ -48,7 +48,7 @@ func write(w *info.Writer, keys []string, v interface{}) error {
 
 		return nil
 	default:
-		return w.WriteEntry(&info.Entry{Key: keys, Val: fmt.Sprint(v)})
+		return w.WriteEntry(&keyval.Entry{Key: keys, Val: fmt.Sprint(v)})
 	}
 }
 
@@ -59,7 +59,7 @@ func writeJson() {
 		log.Fatal(err)
 	}
 
-	w := info.NewWriter(os.Stdout)
+	w := keyval.NewWriter(os.Stdout)
 	write(w, nil, m)
 }
 

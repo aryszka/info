@@ -1,4 +1,4 @@
-package info
+package keyval
 
 const (
 	EscapeChar        = '\\'

@@ -1,5 +1,5 @@
 /*
-Package info implements a human readable, streamable, hierarchical data format based on the .ini format.
+Package keyval implements a human readable, streamable, hierarchical data format based on the .ini format.
 
 trim line
 read key until unescaped =
@@ -46,8 +46,6 @@ unicode, with restricted whitespace
 return EOFIncomplete if something left there
 
 tcp is needed, because it is not self-correcting and always valid, and the order matters, too
-
-rename to info format? .info? taken by the info documentation tool
 
 it is well defined
 
@@ -138,4 +136,4 @@ Comment
 - A comment closed by EOF gives an entry without a key and a value.
 - Only '\', '\n', ' ' and '\t' can be escaped in a comment.
 */
-package info
+package keyval
