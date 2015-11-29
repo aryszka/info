@@ -37,13 +37,13 @@ type Reader struct {
 var EOFIncomplete = errors.New("EOF: incomplete data")
 
 func escape(c byte) bool       { return c == EscapeChar }
-func startComment(c byte) bool { return c == CommentChar || c == CommentCharAlt }
+func startComment(c byte) bool { return c == CommentChar }
 func openSection(c byte) bool  { return c == OpenSectionChar }
 func closeSection(c byte) bool { return c == CloseSectionChar }
-func startValue(c byte) bool   { return c == StartValueChar || c == StartValueCharAlt }
+func startValue(c byte) bool   { return c == StartValueChar }
 func keySeparator(c byte) bool { return c == KeySeparatorChar }
 func whitespace(c byte) bool   { return c == SpaceChar || c == TabChar }
-func newline(c byte) bool      { return c == NewlineChar || c == ReturnChar }
+func newline(c byte) bool      { return c == NewlineChar }
 
 func NewReader(r io.Reader) *Reader {
 	return &Reader{

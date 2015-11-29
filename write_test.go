@@ -2,7 +2,7 @@ package keyval
 
 import "testing"
 
-func TestEscape(t *testing.T) {
+func TestEscapeWrite(t *testing.T) {
 	for i, ti := range []struct{ escaped, in, out string }{
 		{"", "abc", "abc"},
 		{"a", "abc", "\\abc"},
@@ -15,7 +15,7 @@ func TestEscape(t *testing.T) {
 		{" \n", "some longer text with\nnew line ",
 			"some\\ longer\\ text\\ with\\\nnew\\ line\\ "},
 	} {
-		out := string(escapeChars([]byte(ti.in), []byte(ti.escaped)))
+		out := string(escapeWrite([]byte(ti.in), []byte(ti.escaped)))
 		if out != ti.out {
 			t.Error(i, ti.escaped, ti.in, ti.out, out)
 		}

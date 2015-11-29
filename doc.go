@@ -68,6 +68,10 @@ optional padding for the writer
 
 rename reader and writer, since they don't implement the interfaces
 
+consider block escaping in keys, values and sections
+
+revisit the escaping specs and tests
+
 
 Specification
 
@@ -102,17 +106,17 @@ Key
 - Keys spanning multiple lines are trimmed at only the start of the first line and the end of last line.
 - Keys can be separated by '.', defining hierarchical structure of keys.
 - Whitespace around '.' separators is trimmed.
-- Only '\', '.', ':', '[', ';', '#', '\n', ' ' and '\t' can be escaped in a key.
+- Only '\', '.', '=', '[', '#', '\n', ' ' and '\t' can be escaped in a key.
 
 
 Value
 
-- Anything is a value, that is after a ':' and before a new line, EOF, another value, section declaration or a
+- Anything is a value, that is after a '=' and before a new line, EOF, another value, section declaration or a
   comment.
 - A value doesn't need to start in a new line.
 - A value is trimmed from leading and trailing whitespace.
 - Values spanning multiple lines are trimmed only at the start of the first and the end of last line.
-- Only '\', ':', '[', ';', '#', '\n', ' ' and '\t' can be escaped in a value.
+- Only '\', '=', '[', '#', '\n', ' ' and '\t' can be escaped in a value.
 
 
 Section
@@ -136,15 +140,15 @@ Section
 
 Comment
 
-- Anything is a comment between a '#' or a ';' and a new line, when '#' or ';' is not inside a section
+- Anything is a comment between a '#' and a new line, when '#' is not inside a section
   declaration or a comment.
 - A comment doesn't need to start in a new line.
 - A comment is trimmed from leading and trailing whitespace.
-- One or more '#' or ';' are ignored at the beginning of a comment, even if separated by whitespace.
-- A '#' or a ';' in a comment is part of the comment.
+- One or more '#' are ignored at the beginning of a comment, even if separated by whitespace.
+- A '#' in a comment is part of the comment.
 - A comment can span multiple lines if it is not broken by a section, a key or a value.
-- In multiline comments, lines not starting with a '#' or a ';' are ignored.
-- An empty comment line starting with '#' or a ';', whitespace not counted, is part of the comment, if it is
+- In multiline comments, lines not starting with a '#' are ignored.
+- An empty comment line starting with '#', whitespace not counted, is part of the comment, if it is
   between two non-empty comment lines.
 - A standalone, empty comment discards the current comment for the following entries.
 - A comment belongs to all following entries until the next comment.

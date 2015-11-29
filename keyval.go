@@ -1,18 +1,15 @@
 package keyval
 
 const (
-	EscapeChar        = '\\'
-	KeySeparatorChar  = '.'
-	StartValueChar    = ':'
-	StartValueCharAlt = '='
-	OpenSectionChar   = '['
-	CloseSectionChar  = ']'
-	CommentChar       = ';'
-	CommentCharAlt    = '#'
-	NewlineChar       = '\n'
-	ReturnChar        = '\r'
-	SpaceChar         = ' '
-	TabChar           = '\t'
+	EscapeChar       = '\\'
+	KeySeparatorChar = '.'
+	StartValueChar   = '='
+	OpenSectionChar  = '['
+	CloseSectionChar = ']'
+	CommentChar      = '#'
+	NewlineChar      = '\n'
+	SpaceChar        = ' '
+	TabChar          = '\t'
 )
 
 type Entry struct {
@@ -22,44 +19,29 @@ type Entry struct {
 }
 
 var (
+	escapeBound        = []byte{SpaceChar, TabChar}
+	escapeBoundNl      = []byte{SpaceChar, TabChar, NewlineChar}
+	escapeBoundComment = []byte{SpaceChar, TabChar, CommentChar}
+
 	escapeKey = []byte{
 		EscapeChar,
 		KeySeparatorChar,
 		StartValueChar,
-		StartValueCharAlt,
 		OpenSectionChar,
 		CommentChar,
-		CommentCharAlt,
-		NewlineChar,
-		ReturnChar,
-		SpaceChar,
-		TabChar}
+		NewlineChar}
 
 	escapeVal = []byte{
 		EscapeChar,
 		StartValueChar,
-		StartValueCharAlt,
 		OpenSectionChar,
 		CommentChar,
-		CommentCharAlt,
-		NewlineChar,
-		ReturnChar,
-		// SpaceChar,
-		// TabChar
-	}
+		NewlineChar}
 
 	escapeSection = []byte{
 		EscapeChar,
 		CloseSectionChar,
-		KeySeparatorChar,
-		NewlineChar,
-		ReturnChar,
-		SpaceChar,
-		TabChar}
+		KeySeparatorChar}
 
-	escapeComment = []byte{
-		EscapeChar,
-		NewlineChar,
-		SpaceChar,
-		TabChar}
+	escapeComment = []byte{EscapeChar}
 )

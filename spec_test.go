@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-func TestSpec(t *testing.T) {
+func TestReadSpec(t *testing.T) {
 	for i, d := range []struct {
 		doc      string
 		infinite bool
@@ -79,42 +79,42 @@ func TestSpec(t *testing.T) {
 	}, {
 
 		// single value, eof
-		": a value",
+		"= a value",
 		false,
 		[]*Entry{{Val: "a value"}},
 		io.EOF,
 	}, {
 
 		// single value, infinite
-		": a value",
+		"= a value",
 		true,
 		nil,
 		nil,
 	}, {
 
 		// single value, infinite, with newline
-		": a value\n",
+		"= a value\n",
 		true,
 		[]*Entry{{Val: "a value"}},
 		nil,
 	}, {
 
 		// key and value, eof
-		"a key : a value",
+		"a key = a value",
 		false,
 		[]*Entry{{Key: []string{"a key"}, Val: "a value"}},
 		io.EOF,
 	}, {
 
 		// key and value, infinite
-		"a key : a value",
+		"a key = a value",
 		true,
 		nil,
 		nil,
 	}, {
 
 		// key and value, infinite, with new line
-		"a key : a value\n",
+		"a key = a value\n",
 		true,
 		[]*Entry{{Key: []string{"a key"}, Val: "a value"}},
 		nil,
@@ -123,7 +123,7 @@ func TestSpec(t *testing.T) {
 		// comment, section, key, value, eof
 		`# a comment
 		    [a section]
-		    a key : a value`,
+		    a key = a value`,
 		false,
 		[]*Entry{{
 			Comment: "a comment",
@@ -136,7 +136,7 @@ func TestSpec(t *testing.T) {
 		// comment, section, key, value, infinite
 		`# a comment
 		    [a section]
-		    a key : a value`,
+		    a key = a value`,
 		true,
 		nil,
 		nil,
@@ -145,7 +145,7 @@ func TestSpec(t *testing.T) {
 		// comment, section, key, value, infinite, with newline
 		`# a comment
 		    [a section]
-		    a key : a value
+		    a key = a value
 		    `,
 		true,
 		[]*Entry{{
@@ -156,22 +156,15 @@ func TestSpec(t *testing.T) {
 		nil,
 	}, {
 
-		// Anything is a comment between a '#' or a ';' and a new line.
+		// Anything is a comment between a '#' and a new line.
 		"# a comment\n",
 		false,
 		[]*Entry{{Comment: "a comment"}},
 		io.EOF,
 	}, {
 
-		// Anything is a comment between a '#' or a ';' and a new line.
-		"; a comment\n",
-		false,
-		[]*Entry{{Comment: "a comment"}},
-		io.EOF,
-	}, {
-
 		// A comment doesn't need to start in a new line.
-		"a key : a value # a comment\n",
+		"a key = a value # a comment\n",
 		false,
 		[]*Entry{
 			{Key: []string{"a key"}, Val: "a value"},
@@ -187,45 +180,24 @@ func TestSpec(t *testing.T) {
 		io.EOF,
 	}, {
 
-		// One or more '#' or ';' are ignored at the beginning of a comment, even if separated by whitespaces.
+		// One or more '#' are ignored at the beginning of a comment, even if separated by whitespaces.
 		"## a comment\n",
 		false,
 		[]*Entry{{Comment: "a comment"}},
 		io.EOF,
 	}, {
 
-		// One or more '#' or ';' are ignored at the beginning of a comment, even if separated by whitespaces.
+		// One or more '#' are ignored at the beginning of a comment, even if separated by whitespaces.
 		"# \t# a comment\n",
 		false,
 		[]*Entry{{Comment: "a comment"}},
 		io.EOF,
 	}, {
 
-		// One or more '#' or ';' are ignored at the beginning of a comment, even if separated by whitespaces.
-		";; a comment\n",
-		false,
-		[]*Entry{{Comment: "a comment"}},
-		io.EOF,
-	}, {
-
-		// One or more '#' or ';' are ignored at the beginning of a comment, even if separated by whitespaces.
-		"; \t# a comment\n",
-		false,
-		[]*Entry{{Comment: "a comment"}},
-		io.EOF,
-	}, {
-
-		// A '#' or a ';' in a comment is part of the comment.
+		// A '#' in a comment is part of the comment.
 		"# a # comment",
 		false,
 		[]*Entry{{Comment: "a # comment"}},
-		io.EOF,
-	}, {
-
-		// A '#' or a ';' in a comment is part of the comment.
-		"; a ; comment",
-		false,
-		[]*Entry{{Comment: "a ; comment"}},
 		io.EOF,
 	}, {
 
@@ -267,7 +239,7 @@ func TestSpec(t *testing.T) {
 
 		// A comment can span multiple lines if it is not broken by a section, a key or a value.
 		"# A comment can span multiple\n" +
-			": a value\n" +
+			"= a value\n" +
 			"# lines if it is not broken by\n" +
 			"# a section, a key or a value.",
 		false,
@@ -278,37 +250,24 @@ func TestSpec(t *testing.T) {
 		io.EOF,
 	}, {
 
-		// In multiline comments, lines not starting with a '#' or a ';' are ignored.
+		// In multiline comments, lines not starting with a '#' are ignored.
 		"# In multiline comments, lines not\n" +
 			" \t \n" +
-			"; starting with a '#' or a ';' are ignored.",
+			"# starting with a '#' are ignored.",
 		false,
 		[]*Entry{{Comment: "In multiline comments, lines not\n" +
-			"starting with a '#' or a ';' are ignored.",
+			"starting with a '#' are ignored.",
 		}},
 		io.EOF,
 	}, {
 
-		// An empty comment line starting with '#' or a ';', whitespace not counted, is part of the comment, if it is
+		// An empty comment line starting with '#', whitespace not counted, is part of the comment, if it is
 		// between two non-empty comment lines.
-		"# An empty comment line starting with '#' or a ';', whitespace not counted,\n" +
+		"# An empty comment line starting with '#', whitespace not counted,\n" +
 			" \t # \t \n" +
 			"# between two non-empty comment lines.",
 		false,
-		[]*Entry{{Comment: "An empty comment line starting with '#' or a ';', whitespace not counted,\n" +
-			"\n" +
-			"between two non-empty comment lines.",
-		}},
-		io.EOF,
-	}, {
-
-		// An empty comment line starting with '#' or a ';', whitespace not counted, is part of the comment, if it is
-		// between two non-empty comment lines.
-		"# An empty comment line starting with '#' or a ';', whitespace not counted,\n" +
-			" \t ; \t \n" +
-			"# between two non-empty comment lines.",
-		false,
-		[]*Entry{{Comment: "An empty comment line starting with '#' or a ';', whitespace not counted,\n" +
+		[]*Entry{{Comment: "An empty comment line starting with '#', whitespace not counted,\n" +
 			"\n" +
 			"between two non-empty comment lines.",
 		}},
@@ -317,9 +276,9 @@ func TestSpec(t *testing.T) {
 
 		// A standalone, empty comment discards the current comment for the following entries.
 		`# a comment
-         key one: value one
+         key one = value one
          ##
-         key two: value two`,
+         key two = value two`,
 		false,
 		[]*Entry{
 			{Comment: "a comment", Key: []string{"key one"}, Val: "value one"},
@@ -336,10 +295,10 @@ func TestSpec(t *testing.T) {
 
 		// A comment belongs to all following entries until the next comment.
 		`# a comment
-		     key1 : value1
-		     key2 : value2
+		     key1 = value1
+		     key2 = value2
 		     # another comment
-		     key3 : value3`,
+		     key3 = value3`,
 		false,
 		[]*Entry{
 			{Comment: "a comment", Key: []string{"key1"}, Val: "value1"},
@@ -395,7 +354,7 @@ func TestSpec(t *testing.T) {
 	}, {
 
 		// A section declaration doesn't need to start in a new line.
-		"a key: a value [a section]",
+		"a key = a value [a section]",
 		false,
 		[]*Entry{{Key: []string{"a key"}, Val: "a value"}, {Key: []string{"a section"}}},
 		io.EOF,
@@ -439,11 +398,11 @@ func TestSpec(t *testing.T) {
 		// All keys and values following a section declaration belong to the declared section, until the next section
 		// declaration. The section is applied to the keys as a prefix.
 		`[section one]
-         key one: value one
-         key two: value two
+         key one = value one
+         key two = value two
          [section two]
-         key one: value one
-         key two: value two`,
+         key one = value one
+         key two = value two`,
 		false,
 		[]*Entry{
 			{Key: []string{"section one", "key one"}, Val: "value one"},
@@ -455,11 +414,11 @@ func TestSpec(t *testing.T) {
 
 		// An empty section declaration, '[]', discards the current section.
 		`[section one]
-         key one: value one
-         key two: value two
+         key one = value one
+         key two = value two
          []
-         key one: value one
-         key two: value two`,
+         key one = value one
+         key two = value two`,
 		false,
 		[]*Entry{
 			{Key: []string{"section one", "key one"}, Val: "value one"},
@@ -555,7 +514,7 @@ func TestSpec(t *testing.T) {
 	}, {
 
 		// Anything is a key, that is before a new line or EOF, and is not a value, a section or a comment.
-		"a key: a value",
+		"a key = a value",
 		false,
 		[]*Entry{{Key: []string{"a key"}, Val: "a value"}},
 		io.EOF,
@@ -610,181 +569,167 @@ func TestSpec(t *testing.T) {
 		io.EOF,
 	}, {
 
-		// Only '\', '.', ':', '[', ';', '#', '\n', ' ' and '\t' can be escaped in a key.
+		// Only '\', '.', '=', '[', '#', '\n', ' ' and '\t' can be escaped in a key.
 		"\\\\",
 		false,
 		[]*Entry{{Key: []string{"\\"}}},
 		io.EOF,
 	}, {
 
-		// Only '\', '.', ':', '[', ';', '#', '\n', ' ' and '\t' can be escaped in a key.
+		// Only '\', '.', '=', '[', '#', '\n', ' ' and '\t' can be escaped in a key.
 		"single\\.key",
 		false,
 		[]*Entry{{Key: []string{"single.key"}}},
 		io.EOF,
 	}, {
 
-		// Only '\', '.', ':', '[', ';', '#', '\n', ' ' and '\t' can be escaped in a key.
+		// Only '\', '.', '=', '[', '#', '\n', ' ' and '\t' can be escaped in a key.
 		"\\: not a value",
 		false,
 		[]*Entry{{Key: []string{": not a value"}}},
 		io.EOF,
 	}, {
 
-		// Only '\', '.', ':', '[', ';', '#', '\n', ' ' and '\t' can be escaped in a key.
+		// Only '\', '.', '=', '[', '#', '\n', ' ' and '\t' can be escaped in a key.
 		"\\[not a section]",
 		false,
 		[]*Entry{{Key: []string{"[not a section]"}}},
 		io.EOF,
 	}, {
 
-		// Only '\', '.', ':', '[', ';', '#', '\n', ' ' and '\t' can be escaped in a key.
-		"\\; not a comment",
-		false,
-		[]*Entry{{Key: []string{"; not a comment"}}},
-		io.EOF,
-	}, {
-
-		// Only '\', '.', ':', '[', ';', '#', '\n', ' ' and '\t' can be escaped in a key.
+		// Only '\', '.', '=', '[', '#', '\n', ' ' and '\t' can be escaped in a key.
 		"\\# not a comment",
 		false,
 		[]*Entry{{Key: []string{"# not a comment"}}},
 		io.EOF,
 	}, {
 
-		// Only '\', '.', ':', '[', ';', '#', '\n', ' ' and '\t' can be escaped in a key.
+		// Only '\', '.', '=', '[', '#', '\n', ' ' and '\t' can be escaped in a key.
 		"\\\n not a new entry",
 		false,
 		[]*Entry{{Key: []string{"\n not a new entry"}}},
 		io.EOF,
 	}, {
 
-		// Only '\', '.', ':', '[', ';', '#', '\n', ' ' and '\t' can be escaped in a key.
+		// Only '\', '.', '=', '[', '#', '\n', ' ' and '\t' can be escaped in a key.
 		"\\ ",
 		false,
 		[]*Entry{{Key: []string{" "}}},
 		io.EOF,
 	}, {
 
-		// Only '\', '.', ':', '[', ';', '#', '\n', ' ' and '\t' can be escaped in a key.
+		// Only '\', '.', '=', '[', '#', '\n', ' ' and '\t' can be escaped in a key.
 		"\\\t",
 		false,
 		[]*Entry{{Key: []string{"\t"}}},
 		io.EOF,
 	}, {
 
-		// Anything is a value, that is after a ':' and before a new line, EOF, another value, section declaration or a
+		// Anything is a value, that is after a '=' and before a new line, EOF, another value, section declaration or a
 		// comment.
-		":a value\n",
+		"= a value\n",
 		true,
 		[]*Entry{{Val: "a value"}},
 		nil,
 	}, {
 
-		// Anything is a value, that is after a ':' and before a new line, EOF, another value, section declaration or a
+		// Anything is a value, that is after a '=' and before a new line, EOF, another value, section declaration or a
 		// comment.
-		":a value",
+		"= a value",
 		false,
 		[]*Entry{{Val: "a value"}},
 		io.EOF,
 	}, {
 
-		// Anything is a value, that is after a ':' and before a new line, EOF, another value, section declaration or a
+		// Anything is a value, that is after a '=' and before a new line, EOF, another value, section declaration or a
 		// comment.
-		":a value:another value",
+		"= a value = another value",
 		false,
 		[]*Entry{{Val: "a value"}, {Val: "another value"}},
 		io.EOF,
 	}, {
 
-		// Anything is a value, that is after a ':' and before a new line, EOF, another value, section declaration or a
+		// Anything is a value, that is after a '=' and before a new line, EOF, another value, section declaration or a
 		// comment.
-		":a value [section]",
+		"= a value [section]",
 		false,
 		[]*Entry{{Val: "a value"}, {Key: []string{"section"}}},
 		io.EOF,
 	}, {
 
-		// Anything is a value, that is after a ':' and before a new line, EOF, another value, section declaration or a
+		// Anything is a value, that is after a '=' and before a new line, EOF, another value, section declaration or a
 		// comment.
-		":a value # a comment",
+		"= a value # a comment",
 		false,
 		[]*Entry{{Val: "a value"}, {Comment: "a comment"}},
 		io.EOF,
 	}, {
 
 		// A value doesn't need to start in a new line.
-		"[section] : value",
+		"[section] = value",
 		false,
 		[]*Entry{{Key: []string{"section"}, Val: "value"}},
 		io.EOF,
 	}, {
 
 		// A value is trimmed from leading and trailing whitespace.
-		": \t a value \t ",
+		"= \t a value \t ",
 		false,
 		[]*Entry{{Val: "a value"}},
 		io.EOF,
 	}, {
 
 		// Values spanning multiple lines are trimmed only at the start of the first and the end of last line.
-		": \t a value \t \\\n \t in multiple lines",
+		"= \t a value \t \\\n \t in multiple lines",
 		false,
 		[]*Entry{{Val: "a value \t \n \t in multiple lines"}},
 		io.EOF,
 	}, {
 
-		// Only '\', ':', '[', ';', '#', '\n', ' ' and '\t' can be escaped in a value.
-		": \\\\",
+		// Only '\', '=', '[', '#', '\n', ' ' and '\t' can be escaped in a value.
+		"= \\\\",
 		false,
 		[]*Entry{{Val: "\\"}},
 		io.EOF,
 	}, {
 
-		// Only '\', ':', '[', ';', '#', '\n', ' ' and '\t' can be escaped in a value.
-		": still the same \\: value",
+		// Only '\', '=', '[', '#', '\n', ' ' and '\t' can be escaped in a value.
+		"= still the same \\= value",
 		false,
-		[]*Entry{{Val: "still the same : value"}},
+		[]*Entry{{Val: "still the same = value"}},
 		io.EOF,
 	}, {
 
-		// Only '\', ':', '[', ';', '#', '\n', ' ' and '\t' can be escaped in a value.
-		": a value \\[ not a section ]",
+		// Only '\', '=', '[', '#', '\n', ' ' and '\t' can be escaped in a value.
+		"= a value \\[ not a section ]",
 		false,
 		[]*Entry{{Val: "a value [ not a section ]"}},
 		io.EOF,
 	}, {
 
-		// Only '\', ':', '[', ';', '#', '\n', ' ' and '\t' can be escaped in a value.
-		": a value \\; not a comment",
-		false,
-		[]*Entry{{Val: "a value ; not a comment"}},
-		io.EOF,
-	}, {
-
-		// Only '\', ':', '[', ';', '#', '\n', ' ' and '\t' can be escaped in a value.
-		": a value \\# not a comment",
+		// Only '\', '=', '[', '#', '\n', ' ' and '\t' can be escaped in a value.
+		"= a value \\# not a comment",
 		false,
 		[]*Entry{{Val: "a value # not a comment"}},
 		io.EOF,
 	}, {
 
-		// Only '\', ':', '[', ';', '#', '\n', ' ' and '\t' can be escaped in a value.
-		": a value \\\nin two lines",
+		// Only '\', '=', '[', '#', '\n', ' ' and '\t' can be escaped in a value.
+		"= a value \\\nin two lines",
 		false,
 		[]*Entry{{Val: "a value \nin two lines"}},
 		io.EOF,
 	}, {
 
-		// Only '\', ':', '[', ';', '#', '\n', ' ' and '\t' can be escaped in a value.
-		": \\ ",
+		// Only '\', '=', '[', '#', '\n', ' ' and '\t' can be escaped in a value.
+		"= \\ ",
 		false,
 		[]*Entry{{Val: " "}},
 		io.EOF,
 	}, {
 
-		// Only '\', ':', '[', ';', '#', '\n', ' ' and '\t' can be escaped in a value.
-		": \\\t",
+		// Only '\', '=', '[', '#', '\n', ' ' and '\t' can be escaped in a value.
+		"= \\\t",
 		false,
 		[]*Entry{{Val: "\t"}},
 		io.EOF,
@@ -856,6 +801,141 @@ func TestSpec(t *testing.T) {
 				t.Log(checkEntry.Val)
 				return
 			}
+		}
+	}
+}
+
+func TestWriteSpec(t *testing.T) {
+	for i, ti := range []struct {
+		entries []*Entry
+		output  string
+	}{{
+		nil,
+		"",
+	}, {
+		[]*Entry{nil},
+		"",
+	}, {
+		[]*Entry{{}},
+		"",
+	}, {
+		[]*Entry{{Key: []string{}}},
+		"",
+	}, {
+		[]*Entry{{Key: []string{""}}},
+		"\n",
+	}, {
+		[]*Entry{{Comment: "a comment"}},
+		"# a comment\n",
+	}, {
+		[]*Entry{{Key: []string{"a key"}}},
+		"a key\n",
+	}, {
+		[]*Entry{{Key: []string{"a section", "a key"}}},
+		"[a section]\na key\n",
+	}, {
+		[]*Entry{{Val: "a value"}},
+		"= a value\n",
+	}, {
+		[]*Entry{{Key: []string{"a key"}, Val: "a value"}},
+		"a key = a value\n",
+	}, {
+		[]*Entry{{Comment: "a comment", Key: []string{"a section", "a key"}, Val: "a value"}},
+		"# a comment\n[a section]\na key = a value\n",
+	}, {
+
+		// a '#' in a comment
+		[]*Entry{{Comment: "a # comment"}},
+		"# a # comment\n",
+	}, {
+
+		// a comment spanning multiple lines
+		[]*Entry{{Comment: "a comment\nspanning\nmultiple lines"}},
+		"# a comment\n# spanning\n# multiple lines\n",
+	}, {
+
+		// a key between comments
+		[]*Entry{
+			{Comment: "a comment", Key: []string{"a key"}},
+			{Comment: "another\ncomment"}},
+		"# a comment\na key\n\n# another\n# comment\n",
+	}, {
+
+		// section between comments
+		[]*Entry{
+			{Comment: "a comment", Key: []string{"a section", "a key"}},
+			{Comment: "another\ncomment"}},
+		"# a comment\n[a section]\na key\n\n# another\n# comment\n",
+	}, {
+
+		// section between comments
+		[]*Entry{
+			{Comment: "a comment", Val: "a value"},
+			{Comment: "another\ncomment"}},
+		"# a comment\n= a value\n\n# another\n# comment\n",
+	}, {
+
+		// multi-line comment with empty line
+		[]*Entry{
+			{Comment: "a multiline\n\ncomment"}},
+		"# a multiline\n#\n# comment\n",
+	}, {
+
+		// discard comment
+		[]*Entry{
+			{Comment: "a comment", Key: []string{"a key"}},
+			{Comment: ""}},
+		"# a comment\na key\n\n##\n",
+	}, {
+
+		// discard comment, when no entry
+		[]*Entry{
+			{Comment: "a comment"},
+			{Comment: ""}},
+		"# a comment\n\n[] ##\n",
+	}, {
+
+		// discard comment, when no entry, in a section
+		[]*Entry{
+			{Key: []string{"a section", "a key"}},
+			{Comment: "a comment"},
+			{Comment: ""}},
+		"[a section]\na key\n\n# a comment\n\n[a section] ##\n",
+	}, {
+
+		// comment of multiple entries
+		[]*Entry{
+			{Comment: "comment one", Key: []string{"key one"}, Val: "value one"},
+			{Comment: "comment one", Key: []string{"key two"}, Val: "value two"},
+			{Comment: "comment two", Key: []string{"key three"}, Val: "value three"},
+			{Comment: "comment two", Key: []string{"key four"}, Val: "value four"}},
+		"# comment one\nkey one = value one\nkey two = value two\n\n" +
+			"# comment two\nkey three = value three\nkey four = value four\n",
+	}, {
+
+		// escape leading, tailing whitespace in comments
+		[]*Entry{{Comment: " \t a comment \t "}},
+		"# \\ \t a comment \t\\ \n",
+	}, {
+
+		// escape leading, tailing comment in comments
+		[]*Entry{{Comment: "# a comment"}},
+		"# \\# a comment\n",
+	}} {
+		buf := &bytes.Buffer{}
+		w := NewWriter(buf)
+		for _, e := range ti.entries {
+			if err := w.WriteEntry(e); err != nil {
+				t.Error(err)
+				return
+			}
+		}
+
+		if buf.String() != ti.output {
+			t.Error(i, "invalid output")
+			t.Log(buf.String())
+			t.Log(ti.output)
+			return
 		}
 	}
 }

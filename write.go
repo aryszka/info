@@ -8,11 +8,11 @@ import (
 
 type Writer struct {
 	BufferSize        int
-	UseAltCommentChar bool
 	writer            io.Writer
 	started           bool
 	buffer            []byte
 	comment           string
+	commentIncomplete bool
 	section           []string
 }
 
@@ -57,7 +57,7 @@ func (w *Writer) writeLine() error {
 	return w.write(NewlineChar)
 }
 
-func escapeChars(b, ec []byte) []byte {
+func escapeWrite(b, ec []byte) []byte {
 	eb := make([]byte, 0, len(b))
 	en := 0
 	for i, c := range b {
@@ -74,32 +74,62 @@ func escapeChars(b, ec []byte) []byte {
 	return eb
 }
 
+func escapeBoundaries(b, lec, tec []byte) []byte {
+	switch {
+	case len(b) == 0:
+		return b
+	case len(b) == 1:
+		return escapeWrite(b, lec)
+	default:
+		return append(escapeWrite(b[:1], lec),
+			append(b[1:len(b)-1],
+				escapeWrite(b[len(b)-1:], tec)...)...)
+	}
+}
+
+func escapeOutput(b, wec, lec, tec []byte) []byte {
+	return escapeBoundaries(escapeWrite(b, wec), lec, tec)
+}
+
 func (w *Writer) needWriteComment(comment string) bool {
 	return w.comment != comment
 }
 
-func (w *Writer) commentChar() byte {
-	if w.UseAltCommentChar {
-		return CommentCharAlt
+func (w *Writer) writeComment() error {
+	var err error
+
+	withError := func(f ...func() error) {
+		for err == nil && len(f) > 0 {
+			err = f[0]()
+			f = f[1:]
+		}
 	}
 
-	return CommentChar
-}
+	writeWithError := func(b ...byte) {
+		withError(func() error { return w.write(b...) })
+	}
 
-func (w *Writer) writeComment() error {
-	cc := w.commentChar()
+	if w.commentIncomplete {
+		withError(w.writeSection)
+		writeWithError(SpaceChar)
+	}
+
 	if w.comment == "" {
-		return w.write(cc, cc, NewlineChar)
+		writeWithError(CommentChar)
 	}
 
 	lines := strings.Split(w.comment, string([]byte{NewlineChar}))
 	for _, l := range lines {
-		if err := w.write(append([]byte{cc, ' '}, append(escapeChars([]byte(l), escapeComment), NewlineChar)...)...); err != nil {
-			return err
+		if len(l) == 0 {
+			writeWithError(CommentChar, NewlineChar)
+		} else {
+			writeWithError(append([]byte{CommentChar, SpaceChar},
+				append(escapeOutput([]byte(l), escapeComment, escapeBoundComment, escapeBound),
+					NewlineChar)...)...)
 		}
 	}
 
-	return nil
+	return err
 }
 
 func (w *Writer) splitSection(key []string) ([]string, []string) {
@@ -111,21 +141,25 @@ func (w *Writer) splitSection(key []string) ([]string, []string) {
 	return key[:last], key[last:]
 }
 
-func (w *Writer) needWriteSection(section []string) bool {
+func (w *Writer) needWriteSection(section, key []string, val string) bool {
+	sectionChanged := false
 	if len(section) != len(w.section) {
-		return true
+		sectionChanged = true
 	}
 
-	for i, s := range section {
-		if s != w.section[i] {
-			return true
+	if !sectionChanged {
+		for i, s := range section {
+			if s != w.section[i] {
+				sectionChanged = true
+				break
+			}
 		}
 	}
 
-	return false
+	return sectionChanged && (hasKey(key) || len(val) > 0)
 }
 
-func (w *Writer) writeKeyEscaped(key []string, esc []byte) error {
+func (w *Writer) writeKeyEscaped(key []string, wesc, besc []byte) error {
 	first := true
 	for _, s := range key {
 		if !first {
@@ -134,7 +168,7 @@ func (w *Writer) writeKeyEscaped(key []string, esc []byte) error {
 			}
 		}
 
-		if err := w.write(escapeChars([]byte(s), esc)...); err != nil {
+		if err := w.write(escapeOutput([]byte(s), wesc, besc, besc)...); err != nil {
 			return err
 		}
 
@@ -149,7 +183,7 @@ func (w *Writer) writeSection() error {
 		return err
 	}
 
-	if err := w.writeKeyEscaped(w.section, escapeSection); err != nil {
+	if err := w.writeKeyEscaped(w.section, escapeSection, escapeBoundNl); err != nil {
 		return err
 	}
 
@@ -161,15 +195,21 @@ func hasKey(key []string) bool {
 }
 
 func (w *Writer) writeKey(key []string) error {
-	return w.writeKeyEscaped(key, escapeKey)
+	return w.writeKeyEscaped(key, escapeKey, escapeBound)
 }
 
-func (w *Writer) writeVal(val string) error {
-	if err := w.write(SpaceChar, StartValueCharAlt, SpaceChar); err != nil {
+func (w *Writer) writeVal(val string, leadingSpace bool) error {
+	if leadingSpace {
+		if err := w.write(SpaceChar); err != nil {
+			return err
+		}
+	}
+
+	if err := w.write(StartValueChar, SpaceChar); err != nil {
 		return err
 	}
 
-	return w.write(escapeChars([]byte(val), escapeVal)...)
+	return w.write(escapeOutput([]byte(val), escapeVal, escapeBound, escapeBound)...)
 }
 
 func (w *Writer) WriteEntry(e *Entry) error {
@@ -188,6 +228,10 @@ func (w *Writer) WriteEntry(e *Entry) error {
 		valWritten     bool
 	)
 
+	if w.writer == nil || e == nil {
+		return nil
+	}
+
 	if w.needWriteComment(e.Comment) {
 		w.comment = e.Comment
 
@@ -197,10 +241,11 @@ func (w *Writer) WriteEntry(e *Entry) error {
 
 		withError(w.writeComment)
 		commentWritten = true
+		w.commentIncomplete = true
 	}
 
 	section, key := w.splitSection(e.Key)
-	if w.needWriteSection(section) {
+	if w.needWriteSection(section, key, e.Val) {
 		w.section = section
 
 		if w.started && !commentWritten {
@@ -218,7 +263,7 @@ func (w *Writer) WriteEntry(e *Entry) error {
 	}
 
 	if len(e.Val) > 0 {
-		withError(func() error { return w.writeVal(e.Val) })
+		withError(func() error { return w.writeVal(e.Val, keyWritten) })
 		valWritten = true
 	}
 
@@ -227,11 +272,16 @@ func (w *Writer) WriteEntry(e *Entry) error {
 	}
 
 	w.started = w.started || commentWritten || sectionWritten || keyWritten || valWritten
+	w.commentIncomplete = w.commentIncomplete && !sectionWritten && !keyWritten && !valWritten
 
 	return err
 }
 
 func (w *Writer) Flush() error {
+	if w.writer == nil {
+		return nil
+	}
+
 	if err := w.writeBuffer(); err != nil {
 		return err
 	}
