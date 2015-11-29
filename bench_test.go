@@ -24,17 +24,18 @@ func BenchmarkReadKeyval(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		r := NewReader(buf)
 		// w := NewWriter(bufOut)
+		var collect []*Entry
 		for {
-			// entry, err := r.ReadEntry()
-			_, err := r.ReadEntry()
+			entry, err := r.ReadEntry()
 			if err != nil && err != io.EOF {
 				b.Error(err)
 				break
 			}
 
-			// if entry != nil {
-			//     w.WriteEntry(entry)
-			// }
+			if entry != nil {
+				collect = append(collect, entry)
+				// w.WriteEntry(entry)
+			}
 
 			if err == io.EOF {
 				break
@@ -75,12 +76,11 @@ func BenchmarkReadYaml(b *testing.B) {
 		return
 	}
 
-	buf := bytes.NewBuffer(all)
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
 		o := make(map[string]interface{})
-		if err := yaml.Unmarshal(buf.Bytes(), &o); err != nil && err != io.EOF {
+		if err := yaml.Unmarshal(all, &o); err != nil && err != io.EOF {
 			b.Error(err)
 			break
 		}
