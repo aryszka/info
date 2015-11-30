@@ -6,7 +6,10 @@ import (
 	"testing"
 )
 
-type errWriter struct{ writeCount int }
+type errWriter struct {
+	writeCount int
+	failLength bool
+}
 
 var (
 	errExpectedFailingWrite   = errors.New("expected failing write")
@@ -15,6 +18,10 @@ var (
 
 func (er *errWriter) Write(b []byte) (int, error) {
 	er.writeCount++
+	if er.failLength {
+		return len(b) - 1, nil
+	}
+
 	if er.writeCount <= 1 {
 		return 0, errExpectedFailingRead
 	}
@@ -32,8 +39,6 @@ func TestEscapeWrite(t *testing.T) {
 		{"ac", "abc", "\\ab\\c"},
 		{"bc", "abc", "a\\b\\c"},
 		{"abc", "abc", "\\a\\b\\c"},
-		{" \n", "some longer text with\nnew line ",
-			"some\\ longer\\ text\\ with\\\nnew\\ line\\ "},
 	} {
 		out := string(escapeWrite([]byte(ti.in), []byte(ti.escaped)))
 		if out != ti.out {
@@ -42,9 +47,63 @@ func TestEscapeWrite(t *testing.T) {
 	}
 }
 
+func TestEscapeBoundaries(t *testing.T) {
+	for i, ti := range []struct{ escapedLead, escapedTrail, in, out string }{
+		{"", "", "abc", "abc"},
+		{"a", "", "abc", "\\abc"},
+		{"b", "", "abc", "abc"},
+		{"c", "", "abc", "ab\\c"},
+		{"ab", "", "abc", "\\abc"},
+		{"ac", "", "abc", "\\ab\\c"},
+		{"bc", "", "abc", "ab\\c"},
+		{"abc", "", "abc", "\\ab\\c"},
+		{"a", "c", "abc", "\\ab\\c"},
+		{"", "c", "abc", "ab\\c"},
+		{"c", "a", "abc", "abc"},
+	} {
+		lec := []byte(ti.escapedLead)
+		tec := []byte(ti.escapedTrail)
+		if len(tec) == 0 {
+			tec = lec
+		}
+
+		out := string(escapeBoundaries([]byte(ti.in), lec, tec))
+		if out != ti.out {
+			t.Error(i, ti.escapedLead, ti.escapedTrail, ti.in, ti.out, out)
+		}
+	}
+}
+
+func TestEscapeOutput(t *testing.T) {
+	for i, ti := range []struct{ escapedLead, escaped, escapedTrail, in, out string }{
+		{"", "", "", "abcde", "abcde"},
+		{"", "c", "", "abcde", "ab\\cde"},
+		{"a", "c", "e", "abcde", "\\ab\\cd\\e"},
+		{"a", "c", "", "abcde", "\\ab\\cde"},
+		{"", "c", "e", "abcde", "ab\\cd\\e"},
+		{"bcd", "bcd", "bcd", "abcde", "a\\b\\c\\de"},
+		{"ace", "", "ace", "abcde", "\\abcd\\e"},
+	} {
+		out := string(escapeOutput([]byte(ti.in),
+			[]byte(ti.escaped), []byte(ti.escapedLead), []byte(ti.escapedTrail)))
+		if out != ti.out {
+			t.Error(i, ti.escapedLead, ti.escaped, ti.escapedTrail, ti.in, ti.out, out)
+		}
+	}
+}
+
+func TestFailOnInvalidWriteLength(t *testing.T) {
+	iw := &errWriter{failLength: true}
+	w := NewEntryWriter(iw)
+	err := w.WriteEntry(&Entry{Key: []string{"a key"}})
+	if err != ErrWriteLength {
+		t.Error("failed to fail")
+	}
+}
+
 func TestReturnSameErrorOnRepeatedWriteCall(t *testing.T) {
 	iw := &errWriter{}
-	w := NewWriter(iw)
+	w := NewEntryWriter(iw)
 	var err error
 
 	err = w.WriteEntry(&Entry{Key: []string{"a key"}})
@@ -60,7 +119,7 @@ func TestReturnSameErrorOnRepeatedWriteCall(t *testing.T) {
 
 func TestReturnSameErrorOnRepeatedWriteCallBuffered(t *testing.T) {
 	iw := &errWriter{}
-	w := NewWriter(iw)
+	w := NewEntryWriter(iw)
 	w.BufferSize = 1 << 2
 	var err error
 
@@ -78,6 +137,9 @@ func TestReturnSameErrorOnRepeatedWriteCallBuffered(t *testing.T) {
 	if err != errExpectedFailingRead || iw.writeCount != 1 {
 		t.Error("failed to store previous failure")
 	}
+}
+
+func TestBufferedWrite(t *testing.T) {
 }
 
 func TestWrite(t *testing.T) {
@@ -294,7 +356,7 @@ func TestWrite(t *testing.T) {
 		"= value\\=with\\=equals\n",
 	}} {
 		buf := &bytes.Buffer{}
-		w := NewWriter(buf)
+		w := NewEntryWriter(buf)
 		for _, e := range ti.entries {
 			if err := w.WriteEntry(e); err != nil {
 				t.Error(err)

@@ -45,7 +45,7 @@ func keySeparator(c byte) bool { return c == KeySeparatorChar }
 func whitespace(c byte) bool   { return c == SpaceChar || c == TabChar }
 func newline(c byte) bool      { return c == NewlineChar }
 
-func NewReader(r io.Reader) *EntryReader {
+func NewEntryReader(r io.Reader) *EntryReader {
 	return &EntryReader{
 		BufferSize: DefaultReadBufferSize,
 		reader:     r,
@@ -188,9 +188,30 @@ func (r *EntryReader) eofResult() (*Entry, error) {
 	return last, err
 }
 
+func (r *EntryReader) updateBuffer() {
+	if r.BufferSize > 0 && len(r.buffer) == r.BufferSize {
+		return
+	}
+
+	if r.BufferSize == 0 && len(r.buffer) == 1 {
+		return
+	}
+
+	bsize := r.BufferSize
+	if bsize == 0 {
+		bsize = 1
+	}
+
+	r.buffer = make([]byte, bsize)
+}
+
 func (r *EntryReader) ReadEntry() (*Entry, error) {
 	if r.reader == nil {
 		return nil, nil
+	}
+
+	if r.err != nil && r.err != io.EOF {
+		return nil, r.err
 	}
 
 	next := r.fetchEntry()
@@ -202,18 +223,7 @@ func (r *EntryReader) ReadEntry() (*Entry, error) {
 		return r.eofResult()
 	}
 
-	if len(r.buffer) != r.BufferSize && len(r.buffer) != 1 && r.BufferSize != 0 {
-		bsize := r.BufferSize
-		if bsize <= 0 {
-			bsize = 1
-		}
-
-		r.buffer = make([]byte, bsize)
-	}
-
-	if r.err != nil {
-		return nil, r.err
-	}
+	r.updateBuffer()
 
 	for {
 		var l int

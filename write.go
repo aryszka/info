@@ -19,8 +19,42 @@ type EntryWriter struct {
 
 var ErrWriteLength = errors.New("write failed: byte count does not match")
 
-func NewWriter(w io.Writer) *EntryWriter {
+func NewEntryWriter(w io.Writer) *EntryWriter {
 	return &EntryWriter{BufferSize: 0, writer: w}
+}
+
+func escapeWrite(b, ec []byte) []byte {
+	eb := make([]byte, 0, len(b))
+	en := 0
+	for i, c := range b {
+		for _, e := range ec {
+			if c == e {
+				eb = append(eb, b[len(eb)-en:i]...)
+				eb = append(eb, EscapeChar, c)
+				en++
+			}
+		}
+	}
+
+	eb = append(eb, b[len(eb)-en:]...)
+	return eb
+}
+
+func escapeBoundaries(b, lec, tec []byte) []byte {
+	switch {
+	case len(b) == 0:
+		return b
+	case len(b) == 1:
+		return escapeWrite(b, lec)
+	default:
+		return append(escapeWrite(b[:1], lec),
+			append(b[1:len(b)-1],
+				escapeWrite(b[len(b)-1:], tec)...)...)
+	}
+}
+
+func escapeOutput(b, wec, lec, tec []byte) []byte {
+	return escapeBoundaries(escapeWrite(b, wec), lec, tec)
 }
 
 func (w *EntryWriter) writeAll(b []byte) error {
@@ -56,40 +90,6 @@ func (w *EntryWriter) write(b ...byte) error {
 
 func (w *EntryWriter) writeLine() error {
 	return w.write(NewlineChar)
-}
-
-func escapeWrite(b, ec []byte) []byte {
-	eb := make([]byte, 0, len(b))
-	en := 0
-	for i, c := range b {
-		for _, e := range ec {
-			if c == e {
-				eb = append(eb, b[len(eb)-en:i]...)
-				eb = append(eb, EscapeChar, c)
-				en++
-			}
-		}
-	}
-
-	eb = append(eb, b[len(eb)-en:]...)
-	return eb
-}
-
-func escapeBoundaries(b, lec, tec []byte) []byte {
-	switch {
-	case len(b) == 0:
-		return b
-	case len(b) == 1:
-		return escapeWrite(b, lec)
-	default:
-		return append(escapeWrite(b[:1], lec),
-			append(b[1:len(b)-1],
-				escapeWrite(b[len(b)-1:], tec)...)...)
-	}
-}
-
-func escapeOutput(b, wec, lec, tec []byte) []byte {
-	return escapeBoundaries(escapeWrite(b, wec), lec, tec)
 }
 
 func (w *EntryWriter) needWriteComment(comment string) bool {

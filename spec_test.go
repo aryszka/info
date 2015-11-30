@@ -624,7 +624,7 @@ func TestRead(t *testing.T) {
 			innerReader = &infiniteBuffer{innerReader}
 		}
 
-		reader := NewReader(innerReader)
+		reader := NewEntryReader(innerReader)
 
 		var (
 			allEntries []*Entry

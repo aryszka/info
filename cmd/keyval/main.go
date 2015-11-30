@@ -16,7 +16,7 @@ func printKeyVal(kv *keyval.Entry) {
 }
 
 func read() error {
-	r := keyval.NewReader(os.Stdin)
+	r := keyval.NewEntryReader(os.Stdin)
 	for {
 		kv, err := r.ReadEntry()
 		if err != nil && err != io.EOF {
@@ -63,7 +63,7 @@ func writeJson() error {
 		return err
 	}
 
-	w := keyval.NewWriter(os.Stdout)
+	w := keyval.NewEntryWriter(os.Stdout)
 	return write(w, nil, m)
 }
 

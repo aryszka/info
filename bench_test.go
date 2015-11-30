@@ -20,7 +20,7 @@ func BenchmarkReadKeyval(b *testing.B) {
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
-		r := NewReader(buf)
+		r := NewEntryReader(buf)
 
 		// to how much remembering the encoding/json code,
 		// a similar buffer size is used there. This value
@@ -97,7 +97,7 @@ func BenchmarkReadNoAlloc(b *testing.B) {
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
-		r := NewReader(buf)
+		r := NewEntryReader(buf)
 		r.buffer = ibuf
 
 		var collect []*Entry
