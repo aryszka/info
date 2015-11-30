@@ -6,7 +6,7 @@ import (
 	"strings"
 )
 
-type Writer struct {
+type EntryWriter struct {
 	BufferSize        int
 	writer            io.Writer
 	started           bool
@@ -17,23 +17,23 @@ type Writer struct {
 	err               error
 }
 
-var WriteLengthError = errors.New("write failed: byte count does not match")
+var ErrWriteLength = errors.New("write failed: byte count does not match")
 
-func NewWriter(w io.Writer) *Writer {
-	return &Writer{BufferSize: 0, writer: w}
+func NewWriter(w io.Writer) *EntryWriter {
+	return &EntryWriter{BufferSize: 0, writer: w}
 }
 
-func (w *Writer) writeAll(b []byte) error {
+func (w *EntryWriter) writeAll(b []byte) error {
 	if l, err := w.writer.Write(b); err != nil {
 		return err
 	} else if l != len(b) {
-		return WriteLengthError
+		return ErrWriteLength
 	}
 
 	return nil
 }
 
-func (w *Writer) writeBuffer() error {
+func (w *EntryWriter) writeBuffer() error {
 	for len(w.buffer) > 0 && len(w.buffer) >= w.BufferSize {
 		if err := w.writeAll(w.buffer[0:w.BufferSize]); err != nil {
 			return err
@@ -45,7 +45,7 @@ func (w *Writer) writeBuffer() error {
 	return nil
 }
 
-func (w *Writer) write(b ...byte) error {
+func (w *EntryWriter) write(b ...byte) error {
 	if w.BufferSize <= 0 {
 		return w.writeAll(b)
 	}
@@ -54,7 +54,7 @@ func (w *Writer) write(b ...byte) error {
 	return nil
 }
 
-func (w *Writer) writeLine() error {
+func (w *EntryWriter) writeLine() error {
 	return w.write(NewlineChar)
 }
 
@@ -92,11 +92,11 @@ func escapeOutput(b, wec, lec, tec []byte) []byte {
 	return escapeBoundaries(escapeWrite(b, wec), lec, tec)
 }
 
-func (w *Writer) needWriteComment(comment string) bool {
+func (w *EntryWriter) needWriteComment(comment string) bool {
 	return w.comment != comment
 }
 
-func (w *Writer) writeComment() error {
+func (w *EntryWriter) writeComment() error {
 	var err error
 
 	withError := func(f ...func() error) {
@@ -133,7 +133,7 @@ func (w *Writer) writeComment() error {
 	return err
 }
 
-func (w *Writer) splitSection(key []string) ([]string, []string) {
+func (w *EntryWriter) splitSection(key []string) ([]string, []string) {
 	if len(key) == 0 {
 		return nil, nil
 	}
@@ -142,7 +142,7 @@ func (w *Writer) splitSection(key []string) ([]string, []string) {
 	return key[:last], key[last:]
 }
 
-func (w *Writer) needWriteSection(section, key []string, val string) bool {
+func (w *EntryWriter) needWriteSection(section, key []string, val string) bool {
 	sectionChanged := false
 	if len(section) != len(w.section) {
 		sectionChanged = true
@@ -160,7 +160,7 @@ func (w *Writer) needWriteSection(section, key []string, val string) bool {
 	return sectionChanged && (hasKey(key) || len(val) > 0)
 }
 
-func (w *Writer) writeKeyEscaped(key []string, wesc, besc []byte) error {
+func (w *EntryWriter) writeKeyEscaped(key []string, wesc, besc []byte) error {
 	first := true
 	for _, s := range key {
 		if !first {
@@ -179,7 +179,7 @@ func (w *Writer) writeKeyEscaped(key []string, wesc, besc []byte) error {
 	return nil
 }
 
-func (w *Writer) writeSection() error {
+func (w *EntryWriter) writeSection() error {
 	if err := w.write(OpenSectionChar); err != nil {
 		return err
 	}
@@ -195,11 +195,11 @@ func hasKey(key []string) bool {
 	return len(key) > 0
 }
 
-func (w *Writer) writeKey(key []string) error {
+func (w *EntryWriter) writeKey(key []string) error {
 	return w.writeKeyEscaped(key, escapeKey, escapeBound)
 }
 
-func (w *Writer) writeVal(val string, leadingSpace bool) error {
+func (w *EntryWriter) writeVal(val string, leadingSpace bool) error {
 	if leadingSpace {
 		if err := w.write(SpaceChar); err != nil {
 			return err
@@ -213,7 +213,7 @@ func (w *Writer) writeVal(val string, leadingSpace bool) error {
 	return w.write(escapeOutput([]byte(val), escapeVal, escapeBound, escapeBound)...)
 }
 
-func (w *Writer) WriteEntry(e *Entry) error {
+func (w *EntryWriter) WriteEntry(e *Entry) error {
 	withError := func(f ...func() error) {
 		for w.err == nil && len(f) > 0 {
 			w.err = f[0]()
@@ -278,7 +278,7 @@ func (w *Writer) WriteEntry(e *Entry) error {
 	return w.err
 }
 
-func (w *Writer) Flush() error {
+func (w *EntryWriter) Flush() error {
 	if w.writer == nil || w.err != nil {
 		return w.err
 	}

@@ -33,7 +33,7 @@ func read() error {
 	}
 }
 
-func write(w *keyval.Writer, keys []string, v interface{}) error {
+func write(w *keyval.EntryWriter, keys []string, v interface{}) error {
 	switch vt := v.(type) {
 	case map[string]interface{}:
 		for k, vi := range vt {

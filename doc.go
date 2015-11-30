@@ -3,25 +3,6 @@ Package keyval implements a human readable, streamable, hierarchical data format
 
 cmd
 
-recommend/switch to use with bufio?
-
-rename WriteLengthError to ErrWriteLength
-
-is the first return eofResult really needed? yes, but it needs a test
-
-document escaping: no \n but \<newline>
-
-shall we allow multiple values in a single line?
-homepage: https\://docs.npmjs.com/
-
-for whitespace, escape only the trimmed ones
-
-optional padding for the writer
-
-rename reader and writer, since they don't implement the interfaces
-
-consider block escaping in keys, values and sections
-
 revisit the escaping specs and tests
 
 
@@ -33,6 +14,8 @@ and the order of receiving is the same of sending.
 
 
 The functions in the package are not synchronized.
+The package reader and writer implements only simplistic buffering, for more advanced usage it is better to pass
+in a *bufio.Reader and *bufio.Writer when required, and set the BufferSize to 0.
 
 
 Specification
@@ -50,7 +33,9 @@ Whitespace
 
 Whitespace in this description has a limited meaning: only ' ' or '\t' are called "whitespace". The '\n' is
 handled differently in most cases than the two whitespace characters. The handling of '\r' is undefined. Other
-common or uncommon whitespace characters, like the vertical tab, are handled as any other character.
+common or uncommon whitespace characters, like the vertical tab, are handled as any other character. When '\n'
+is escaped, it means that there is '\' in front of the actual newline character, and this document may call it
+'\n' by accident only out of being accustomed to it.
 
 
 Entry

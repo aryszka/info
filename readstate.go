@@ -18,7 +18,7 @@ const (
 	stateValueOrElse
 )
 
-func (r *Reader) appendChar(c byte) {
+func (r *EntryReader) appendChar(c byte) {
 	if r.escape {
 		switch r.state {
 		case stateInitial:
