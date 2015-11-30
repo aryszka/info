@@ -1,57 +1,9 @@
 /*
 Package keyval implements a human readable, streamable, hierarchical data format based on the .ini format.
 
-trim line
-read key until unescaped =
-trim key
-read value until unescaped \n
-trim value
-problem: escaped whitespace
-solve: define states
-
-keyLeadWhitespace
-key
-key or tailWhitespace
-valueLeadWhitespace
-value
-value or tailWhitespace
-escaped
-
-define valid transitions
-extend with sections
-comments
-[] discards a section
 cmd
-parse hierarchy or flat
-dot to meaningful characters
-no parsing of types: that's the major mistake of most common file formats
-shall it be thread safe?
-
-states:
-whitespace
-comment-whitespace
-comment
-comment-or-whitespace
-section-whitespace
-section
-section-or-whitespace
-key
-key-or-whitespace
-value-whitespace
-value
-value-or-whitespace
-
-unicode, with restricted whitespace
-
-return EOFIncomplete if something left there
-
-tcp is needed, because it is not self-correcting and always valid, and the order matters, too
-
-it is well defined
 
 recommend/switch to use with bufio?
-
-after error, all calls should return the same error
 
 rename WriteLengthError to ErrWriteLength
 
@@ -71,6 +23,16 @@ rename reader and writer, since they don't implement the interfaces
 consider block escaping in keys, values and sections
 
 revisit the escaping specs and tests
+
+
+Based on the INI file format, but (tries to be) well defined and support hierarchical data structures.
+
+
+Streaming only possible where the underlying network protocol makes sure that the packets all arrive, are intact
+and the order of receiving is the same of sending.
+
+
+The functions in the package are not synchronized.
 
 
 Specification
@@ -95,7 +57,9 @@ Entry
 
 An entry can have a key, a value and a comment. Keys, values and comments can be empty. Empty means zero number
 of characters. Keys can stand of multiple parts, separated by '.'. Key parts of an entry are prepended by the
-parts of the section, that the entry belongs to. An entry has at least a non-empty key, value or comment.
+parts of the section, that the entry belongs to. An entry has at least a non-empty key, value or comment. Values
+don't have types. They are just a bunch of characters, and it's up to the utilizing application to decide what
+to do with it.
 
 
 Key

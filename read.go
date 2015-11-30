@@ -31,7 +31,7 @@ type Reader struct {
 	whitespace     []byte
 	commentApplied bool
 	sectionApplied bool
-	eof            bool
+	err            error
 }
 
 var EOFIncomplete = errors.New("EOF: incomplete data")
@@ -196,22 +196,31 @@ func (r *Reader) ReadEntry() (*Entry, error) {
 		return next, nil
 	}
 
-	if r.eof {
+	if r.err == io.EOF {
 		return r.eofResult()
 	}
 
 	if len(r.buffer) != r.BufferSize {
-		r.buffer = make([]byte, r.BufferSize)
+		bsize := r.BufferSize
+		if bsize <= 0 {
+			bsize = 1
+		}
+
+		r.buffer = make([]byte, bsize)
+	}
+
+	if r.err != nil {
+		return nil, r.err
 	}
 
 	for {
-		l, err := r.reader.Read(r.buffer)
-		if err != nil && err != io.EOF {
-			return nil, err
+		var l int
+		l, r.err = r.reader.Read(r.buffer)
+		if r.err != nil && r.err != io.EOF {
+			return nil, r.err
 		}
 
-		r.eof = err == io.EOF
-		if r.eof && l == 0 {
+		if r.err == io.EOF && l == 0 {
 			return r.eofResult()
 		}
 
@@ -230,7 +239,7 @@ func (r *Reader) ReadEntry() (*Entry, error) {
 			return next, nil
 		}
 
-		if r.eof {
+		if r.err == io.EOF {
 			return r.eofResult()
 		}
 

@@ -14,6 +14,7 @@ type Writer struct {
 	comment           string
 	commentIncomplete bool
 	section           []string
+	err               error
 }
 
 var WriteLengthError = errors.New("write failed: byte count does not match")
@@ -33,7 +34,7 @@ func (w *Writer) writeAll(b []byte) error {
 }
 
 func (w *Writer) writeBuffer() error {
-	for len(w.buffer) >= w.BufferSize {
+	for len(w.buffer) > 0 && len(w.buffer) >= w.BufferSize {
 		if err := w.writeAll(w.buffer[0:w.BufferSize]); err != nil {
 			return err
 		}
@@ -213,10 +214,9 @@ func (w *Writer) writeVal(val string, leadingSpace bool) error {
 }
 
 func (w *Writer) WriteEntry(e *Entry) error {
-	var err error
 	withError := func(f ...func() error) {
-		for err == nil && len(f) > 0 {
-			err = f[0]()
+		for w.err == nil && len(f) > 0 {
+			w.err = f[0]()
 			f = f[1:]
 		}
 	}
@@ -228,8 +228,8 @@ func (w *Writer) WriteEntry(e *Entry) error {
 		valWritten     bool
 	)
 
-	if w.writer == nil || e == nil {
-		return nil
+	if w.writer == nil || e == nil || w.err != nil {
+		return w.err
 	}
 
 	if w.needWriteComment(e.Comment) {
@@ -274,17 +274,19 @@ func (w *Writer) WriteEntry(e *Entry) error {
 	w.started = w.started || commentWritten || sectionWritten || keyWritten || valWritten
 	w.commentIncomplete = w.commentIncomplete && !sectionWritten && !keyWritten && !valWritten
 
-	return err
+	withError(w.writeBuffer)
+	return w.err
 }
 
 func (w *Writer) Flush() error {
-	if w.writer == nil {
-		return nil
+	if w.writer == nil || w.err != nil {
+		return w.err
 	}
 
-	if err := w.writeBuffer(); err != nil {
-		return err
+	if w.err = w.writeBuffer(); w.err != nil {
+		return w.err
 	}
 
-	return w.writeAll(w.buffer)
+	w.err = w.writeAll(w.buffer)
+	return w.err
 }

@@ -2,12 +2,29 @@ package keyval
 
 import (
 	"bytes"
+	"errors"
 	"io"
 	"testing"
 )
 
 type infiniteBuffer struct {
 	reader io.Reader
+}
+
+type errReader struct{ readCount int }
+
+var (
+	errExpectedFailingRead   = errors.New("expected failing read")
+	errUnexpectedFailingRead = errors.New("unexpected failing read")
+)
+
+func (er *errReader) Read(b []byte) (int, error) {
+	er.readCount++
+	if er.readCount <= 1 {
+		return 0, errExpectedFailingRead
+	}
+
+	return 0, errUnexpectedFailingRead
 }
 
 func (b *infiniteBuffer) Read(data []byte) (int, error) {
@@ -66,5 +83,21 @@ func TestSmallBufferSize(t *testing.T) {
 		if err == io.EOF {
 			return
 		}
+	}
+}
+
+func TestReturnsSameErrorOnReadRepeatedCall(t *testing.T) {
+	ir := &errReader{}
+	r := NewReader(ir)
+	var err error
+
+	_, err = r.ReadEntry()
+	if err != errExpectedFailingRead {
+		t.Error("failed to fail")
+	}
+
+	_, err = r.ReadEntry()
+	if err != errExpectedFailingRead || ir.readCount != 1 {
+		t.Error("failed to store previous failure")
 	}
 }
