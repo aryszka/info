@@ -1,10 +1,6 @@
 /*
 Package keyval implements a human readable, streamable, hierarchical data format based on the .ini format.
 
-cmd
-
-revisit the escaping specs and tests
-
 
 Based on the INI file format, but (tries to be) well defined and support hierarchical data structures.
 
@@ -55,7 +51,8 @@ Key
 - Keys spanning multiple lines are trimmed at only the start of the first line and the end of last line.
 - Keys can be separated by '.', defining hierarchical structure of keys.
 - Whitespace around '.' separators is trimmed.
-- Only '\', '.', '=', '[', '#', '\n', ' ' and '\t' can be escaped in a key.
+- Inside a key, '\', '.', '=', '[', '#', '\n' can be escaped. At the key boundaries, ' ' and '\t' can be
+  escaped, causing the escaped character be part of the key.
 
 
 Value
@@ -65,7 +62,8 @@ Value
 - A value doesn't need to start in a new line.
 - A value is trimmed from leading and trailing whitespace.
 - Values spanning multiple lines are trimmed only at the start of the first and the end of last line.
-- Only '\', '=', '[', '#', '\n', ' ' and '\t' can be escaped in a value.
+- Inside a value, '\', '=', '[', '#', '\n' can be escaped. At the value boundaries, ' ' and '\t' can be escaped,
+  causing the escaped character be part of the value.
 
 
 Section
@@ -84,7 +82,8 @@ Section
 - A section without keys and values, gives an entry with the section as the key and an empty value.
 - An incomplete section declaration before EOF gives an error distinct from EOF.
 - There are no comments inside a section declaration.
-- Only '\', ']', '.', '\n', ' ' and '\t' can be escaped inside a section declaration.
+- Inside a section declaration, '\', '.', ']' can be escaped. At the section declaration boundaries, '\n', ' '
+  and '\t' can be escaped, causing the escaped character be part of the section declaration.
 
 
 Comment
@@ -102,6 +101,7 @@ Comment
 - A standalone, empty comment discards the current comment for the following entries.
 - A comment belongs to all following entries until the next comment.
 - A comment closed by EOF gives an entry without a key and a value.
-- Only '\', '\n', ' ' and '\t' can be escaped in a comment.
+- Inside a comment, '\', '\n' can be escaped. At the comment boundaries, ' ' and '\t' can be escaped, causing
+  the escaped character be part of the section declaration.
 */
 package keyval

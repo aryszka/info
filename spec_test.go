@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-func TestReadSpec(t *testing.T) {
+func TestRead(t *testing.T) {
 	for i, d := range []struct {
 		doc      string
 		infinite bool
@@ -308,27 +308,17 @@ func TestReadSpec(t *testing.T) {
 		io.EOF,
 	}, {
 
-		// Only '\', '\n', ' ' and '\t' can be escaped in a comment.
-		`# Only '\\', '\\n', ' ' and '\\t' can be escaped\` + "\n" +
-			`in a comment.`,
+		// Only '\' and '\n' can be escaped in a comment.
+		"# escaped \\\\ and escaped \\\n in a comment",
 		false,
-		[]*Entry{{Comment: `Only '\', '\n', ' ' and '\t' can be escaped` + "\n" + `in a comment.`}},
+		[]*Entry{{Comment: "escaped \\ and escaped \n in a comment"}},
 		io.EOF,
 	}, {
 
-		// Only '\', '\n', ' ' and '\t' can be escaped in a comment.
-		`# Only '\\', '\\n', ' ' and '\\t' \ ` + "\n" +
-			`# can be escaped in a comment.`,
+		// Escaped whitespace at the comment boundaries.
+		"# \\ \tescaped whitespace at the comment boundaries \\\t",
 		false,
-		[]*Entry{{Comment: `Only '\', '\n', ' ' and '\t'  ` + "\n" +
-			`can be escaped in a comment.`}},
-		io.EOF,
-	}, {
-
-		// Only '\', '\n', ' ' and '\t' can be escaped in a comment.
-		"# a comment \\[",
-		false,
-		[]*Entry{{Comment: "a comment ["}},
+		[]*Entry{{Comment: " \tescaped whitespace at the comment boundaries \t"}},
 		io.EOF,
 	}, {
 
@@ -450,45 +440,17 @@ func TestReadSpec(t *testing.T) {
 		EOFIncomplete,
 	}, {
 
-		// Only '\', ']', '.', '\n', ' ' and '\t' can be escaped inside a section declaration.
-		"[section \\\\ ]",
+		// Escaped '\', '.' and ']' in a section declaration.
+		"[section with escaped \\\\, \\. and \\]]",
 		false,
-		[]*Entry{{Key: []string{"section \\"}}},
+		[]*Entry{{Key: []string{"section with escaped \\, . and ]"}}},
 		io.EOF,
 	}, {
 
-		// Only '\', ']', '.', '\n', ' ' and '\t' can be escaped inside a section declaration.
-		"[section \\] ]",
+		// Escaped whitespace at the section boundaries.
+		"[\\ \tescaped whitespace \\\t]",
 		false,
-		[]*Entry{{Key: []string{"section ]"}}},
-		io.EOF,
-	}, {
-
-		// Only '\', ']', '.', '\n', ' ' and '\t' can be escaped inside a section declaration.
-		"[a \\. section]",
-		false,
-		[]*Entry{{Key: []string{"a . section"}}},
-		io.EOF,
-	}, {
-
-		// Only '\', ']', '.', '\n', ' ' and '\t' can be escaped inside a section declaration.
-		"[section \\\n ]",
-		false,
-		[]*Entry{{Key: []string{"section \n"}}},
-		io.EOF,
-	}, {
-
-		// Only '\', ']', '.', '\n', ' ' and '\t' can be escaped inside a section declaration.
-		"[section \\  ]",
-		false,
-		[]*Entry{{Key: []string{"section  "}}},
-		io.EOF,
-	}, {
-
-		// Only '\', ']', '.', '\n', ' ' and '\t' can be escaped inside a section declaration.
-		"[section \\\t ]",
-		false,
-		[]*Entry{{Key: []string{"section \t"}}},
+		[]*Entry{{Key: []string{" \tescaped whitespace \t"}}},
 		io.EOF,
 	}, {
 
@@ -569,59 +531,17 @@ func TestReadSpec(t *testing.T) {
 		io.EOF,
 	}, {
 
-		// Only '\', '.', '=', '[', '#', '\n', ' ' and '\t' can be escaped in a key.
-		"\\\\",
+		// Only '\', '.', '=', '[', '#' and '\n' can be escaped in a key.
+		"key with escaped \\\\, \\., \\=, \\[, \\# and \\\nin it",
 		false,
-		[]*Entry{{Key: []string{"\\"}}},
+		[]*Entry{{Key: []string{"key with escaped \\, ., =, [, # and \nin it"}}},
 		io.EOF,
 	}, {
 
-		// Only '\', '.', '=', '[', '#', '\n', ' ' and '\t' can be escaped in a key.
-		"single\\.key",
+		// Escaped whitespace at the key boundaries.
+		"\\ \tkey with escaped whitespace \\\t",
 		false,
-		[]*Entry{{Key: []string{"single.key"}}},
-		io.EOF,
-	}, {
-
-		// Only '\', '.', '=', '[', '#', '\n', ' ' and '\t' can be escaped in a key.
-		"\\: not a value",
-		false,
-		[]*Entry{{Key: []string{": not a value"}}},
-		io.EOF,
-	}, {
-
-		// Only '\', '.', '=', '[', '#', '\n', ' ' and '\t' can be escaped in a key.
-		"\\[not a section]",
-		false,
-		[]*Entry{{Key: []string{"[not a section]"}}},
-		io.EOF,
-	}, {
-
-		// Only '\', '.', '=', '[', '#', '\n', ' ' and '\t' can be escaped in a key.
-		"\\# not a comment",
-		false,
-		[]*Entry{{Key: []string{"# not a comment"}}},
-		io.EOF,
-	}, {
-
-		// Only '\', '.', '=', '[', '#', '\n', ' ' and '\t' can be escaped in a key.
-		"\\\n not a new entry",
-		false,
-		[]*Entry{{Key: []string{"\n not a new entry"}}},
-		io.EOF,
-	}, {
-
-		// Only '\', '.', '=', '[', '#', '\n', ' ' and '\t' can be escaped in a key.
-		"\\ ",
-		false,
-		[]*Entry{{Key: []string{" "}}},
-		io.EOF,
-	}, {
-
-		// Only '\', '.', '=', '[', '#', '\n', ' ' and '\t' can be escaped in a key.
-		"\\\t",
-		false,
-		[]*Entry{{Key: []string{"\t"}}},
+		[]*Entry{{Key: []string{" \tkey with escaped whitespace \t"}}},
 		io.EOF,
 	}, {
 
@@ -686,52 +606,17 @@ func TestReadSpec(t *testing.T) {
 		io.EOF,
 	}, {
 
-		// Only '\', '=', '[', '#', '\n', ' ' and '\t' can be escaped in a value.
-		"= \\\\",
+		// Only '\', '=', '[', '#' and '\n' can be escaped in a value.
+		"= value with escaped \\\\, \\=, \\[, \\# and \\\nin it",
 		false,
-		[]*Entry{{Val: "\\"}},
+		[]*Entry{{Val: "value with escaped \\, =, [, # and \nin it"}},
 		io.EOF,
 	}, {
 
-		// Only '\', '=', '[', '#', '\n', ' ' and '\t' can be escaped in a value.
-		"= still the same \\= value",
+		// Escaped whitespace at the value boundaries.
+		"= \\ \tescaped whitespace \\\t",
 		false,
-		[]*Entry{{Val: "still the same = value"}},
-		io.EOF,
-	}, {
-
-		// Only '\', '=', '[', '#', '\n', ' ' and '\t' can be escaped in a value.
-		"= a value \\[ not a section ]",
-		false,
-		[]*Entry{{Val: "a value [ not a section ]"}},
-		io.EOF,
-	}, {
-
-		// Only '\', '=', '[', '#', '\n', ' ' and '\t' can be escaped in a value.
-		"= a value \\# not a comment",
-		false,
-		[]*Entry{{Val: "a value # not a comment"}},
-		io.EOF,
-	}, {
-
-		// Only '\', '=', '[', '#', '\n', ' ' and '\t' can be escaped in a value.
-		"= a value \\\nin two lines",
-		false,
-		[]*Entry{{Val: "a value \nin two lines"}},
-		io.EOF,
-	}, {
-
-		// Only '\', '=', '[', '#', '\n', ' ' and '\t' can be escaped in a value.
-		"= \\ ",
-		false,
-		[]*Entry{{Val: " "}},
-		io.EOF,
-	}, {
-
-		// Only '\', '=', '[', '#', '\n', ' ' and '\t' can be escaped in a value.
-		"= \\\t",
-		false,
-		[]*Entry{{Val: "\t"}},
+		[]*Entry{{Val: " \tescaped whitespace \t"}},
 		io.EOF,
 	}} {
 		var innerReader io.Reader = bytes.NewBuffer([]byte(d.doc))
@@ -801,237 +686,6 @@ func TestReadSpec(t *testing.T) {
 				t.Log(checkEntry.Val)
 				return
 			}
-		}
-	}
-}
-
-func TestWriteSpec(t *testing.T) {
-	for i, ti := range []struct {
-		entries []*Entry
-		output  string
-	}{{
-		nil,
-		"",
-	}, {
-		[]*Entry{nil},
-		"",
-	}, {
-		[]*Entry{{}},
-		"",
-	}, {
-		[]*Entry{{Key: []string{}}},
-		"",
-	}, {
-		[]*Entry{{Key: []string{""}}},
-		"\n",
-	}, {
-		[]*Entry{{Comment: "a comment"}},
-		"# a comment\n",
-	}, {
-		[]*Entry{{Key: []string{"a key"}}},
-		"a key\n",
-	}, {
-		[]*Entry{{Key: []string{"a section", "a key"}}},
-		"[a section]\na key\n",
-	}, {
-		[]*Entry{{Val: "a value"}},
-		"= a value\n",
-	}, {
-		[]*Entry{{Key: []string{"a key"}, Val: "a value"}},
-		"a key = a value\n",
-	}, {
-		[]*Entry{{Comment: "a comment", Key: []string{"a section", "a key"}, Val: "a value"}},
-		"# a comment\n[a section]\na key = a value\n",
-	}, {
-
-		// a '#' in a comment
-		[]*Entry{{Comment: "a # comment"}},
-		"# a # comment\n",
-	}, {
-
-		// a comment spanning multiple lines
-		[]*Entry{{Comment: "a comment\nspanning\nmultiple lines"}},
-		"# a comment\n# spanning\n# multiple lines\n",
-	}, {
-
-		// a key between comments
-		[]*Entry{
-			{Comment: "a comment", Key: []string{"a key"}},
-			{Comment: "another\ncomment"}},
-		"# a comment\na key\n\n# another\n# comment\n",
-	}, {
-
-		// section between comments
-		[]*Entry{
-			{Comment: "a comment", Key: []string{"a section", "a key"}},
-			{Comment: "another\ncomment"}},
-		"# a comment\n[a section]\na key\n\n# another\n# comment\n",
-	}, {
-
-		// section between comments
-		[]*Entry{
-			{Comment: "a comment", Val: "a value"},
-			{Comment: "another\ncomment"}},
-		"# a comment\n= a value\n\n# another\n# comment\n",
-	}, {
-
-		// multi-line comment with empty line
-		[]*Entry{
-			{Comment: "a multiline\n\ncomment"}},
-		"# a multiline\n#\n# comment\n",
-	}, {
-
-		// discard comment
-		[]*Entry{
-			{Comment: "a comment", Key: []string{"a key"}},
-			{Comment: ""}},
-		"# a comment\na key\n\n##\n",
-	}, {
-
-		// discard comment, when no entry
-		[]*Entry{
-			{Comment: "a comment"},
-			{Comment: ""}},
-		"# a comment\n\n[] ##\n",
-	}, {
-
-		// discard comment, when no entry, in a section
-		[]*Entry{
-			{Key: []string{"a section", "a key"}},
-			{Comment: "a comment"},
-			{Comment: ""}},
-		"[a section]\na key\n\n# a comment\n\n[a section] ##\n",
-	}, {
-
-		// comment of multiple entries
-		[]*Entry{
-			{Comment: "comment one", Key: []string{"key one"}, Val: "value one"},
-			{Comment: "comment one", Key: []string{"key two"}, Val: "value two"},
-			{Comment: "comment two", Key: []string{"key three"}, Val: "value three"},
-			{Comment: "comment two", Key: []string{"key four"}, Val: "value four"}},
-		"# comment one\nkey one = value one\nkey two = value two\n\n" +
-			"# comment two\nkey three = value three\nkey four = value four\n",
-	}, {
-
-		// escape leading, tailing whitespace in comments
-		[]*Entry{{Comment: " \t a comment \t "}},
-		"# \\ \t a comment \t\\ \n",
-	}, {
-
-		// escape leading, tailing comment in comments
-		[]*Entry{{Comment: "# a comment"}},
-		"# \\# a comment\n",
-	}, {
-
-		// section in a comment
-		[]*Entry{{Comment: "[section]"}},
-		"# [section]\n",
-	}, {
-
-		// section in a section
-		[]*Entry{{Key: []string{"[section", "key"}}},
-		"[[section]\nkey\n",
-	}, {
-
-		// leading whitespace in a section
-		[]*Entry{{Key: []string{" \t section \t ", "key"}}},
-		"[\\ \t section \t\\ ]\nkey\n",
-	}, {
-
-		// leading newline in a section
-		[]*Entry{{Key: []string{"\nsection\n", "key"}}},
-		"[\\\nsection\\\n]\nkey\n",
-	}, {
-
-		// new line inside a section
-		[]*Entry{{Key: []string{"section\nwith a new line", "key"}}},
-		"[section\nwith a new line]\nkey\n",
-	}, {
-
-		// section with '.' in the name
-		[]*Entry{{Key: []string{"section.with.dot", "key"}}},
-		"[section\\.with\\.dot]\nkey\n",
-	}, {
-
-		// section of multiple entries
-		[]*Entry{
-			{Key: []string{"section one", "key one"}, Val: "value one"},
-			{Key: []string{"section one", "key two"}, Val: "value two"},
-			{Key: []string{"section two", "key three"}, Val: "value three"},
-			{Key: []string{"section two", "key four"}, Val: "value four"}},
-		"[section one]\n" +
-			"key one = value one\n" +
-			"key two = value two\n" +
-			"\n" +
-			"[section two]\n" +
-			"key three = value three\n" +
-			"key four = value four\n",
-	}, {
-
-		// discard a section
-		[]*Entry{
-			{Key: []string{"section one", "key one"}, Val: "value one"},
-			{Key: []string{"section one", "key two"}, Val: "value two"},
-			{Key: []string{"key three"}, Val: "value three"},
-			{Key: []string{"key four"}, Val: "value four"}},
-		"[section one]\n" +
-			"key one = value one\n" +
-			"key two = value two\n" +
-			"\n" +
-			"[]\n" +
-			"key three = value three\n" +
-			"key four = value four\n",
-	}, {
-
-		// no comment inside a section declaration
-		[]*Entry{{Key: []string{"section #1", "key"}}},
-		"[section #1]\n" +
-			"key\n",
-	}, {
-
-		// leading and trailing whitespace in a key escaped
-		[]*Entry{{Key: []string{" \t a key \t "}}},
-		"\\ \t a key \t\\ \n",
-	}, {
-
-		// key spanning multiple lines
-		[]*Entry{{Key: []string{"a key\nin multiple lines"}}},
-		"a key\\\nin multiple lines\n",
-	}, {
-
-		// key with '.' in the name
-		[]*Entry{{Key: []string{"key.with.dot"}}},
-		"key\\.with\\.dot\n",
-	}, {
-
-		// leading and trailing whitespace in a value escaped
-		[]*Entry{{Val: " \t a value \t "}},
-		"= \\ \t a value \t\\ \n",
-	}, {
-
-		// value spanning multiple lines
-		[]*Entry{{Val: "a value\nin multiple lines"}},
-		"= a value\\\nin multiple lines\n",
-	}, {
-
-		// a value with '=' in it
-		[]*Entry{{Val: "value=with=equals"}},
-		"= value\\=with\\=equals\n",
-	}} {
-		buf := &bytes.Buffer{}
-		w := NewWriter(buf)
-		for _, e := range ti.entries {
-			if err := w.WriteEntry(e); err != nil {
-				t.Error(err)
-				return
-			}
-		}
-
-		if buf.String() != ti.output {
-			t.Error(i, "invalid output")
-			t.Log(buf.String())
-			t.Log(ti.output)
-			return
 		}
 	}
 }
