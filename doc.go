@@ -2,6 +2,10 @@
 Package keyval implements a human readable, streamable, hierarchical data format based on the .ini format.
 
 
+TODO:
+- discarding a comment, when the current section is not empty
+
+
 Based on the INI file format, but (tries to be) well defined and support hierarchical data structures.
 
 

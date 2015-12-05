@@ -215,6 +215,14 @@ func TestWrite(t *testing.T) {
 		"[a section]\na key\n\n# a comment\n\n[a section] ##\n",
 	}, {
 
+		// change a comment, when no entry, in a section
+		[]*Entry{
+			{Key: []string{"a section", "a key"}},
+			{Comment: "a comment"},
+			{Comment: "a different comment"}},
+		"[a section]\na key\n\n# a comment\n\n[a section]\n\n# a different comment\n",
+	}, {
+
 		// comment of multiple entries
 		[]*Entry{
 			{Comment: "comment one", Key: []string{"key one"}, Val: "value one"},

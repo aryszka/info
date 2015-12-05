@@ -7,12 +7,12 @@ import (
 )
 
 type EntryWriter struct {
-	writer            io.Writer
-	started           bool
-	comment           string
-	commentIncomplete bool
-	section           []string
-	err               error
+	writer    io.Writer
+	started   bool
+	comment   string
+	inComment bool
+	section   []string
+	err       error
 }
 
 var ErrWriteLength = errors.New("write failed: byte count does not match")
@@ -69,7 +69,7 @@ func (w *EntryWriter) writeLine() error {
 	return w.write(NewlineChar)
 }
 
-func (w *EntryWriter) needWriteComment(comment string) bool {
+func (w *EntryWriter) commentChanged(comment string) bool {
 	return w.comment != comment
 }
 
@@ -87,9 +87,13 @@ func (w *EntryWriter) writeComment() error {
 		withError(func() error { return w.write(b...) })
 	}
 
-	if w.commentIncomplete {
+	if w.inComment {
 		withError(w.writeSection)
-		writeWithError(SpaceChar)
+		if len(w.comment) == 0 {
+			writeWithError(SpaceChar)
+		} else {
+			writeWithError(NewlineChar, NewlineChar)
+		}
 	}
 
 	if w.comment == "" {
@@ -110,7 +114,7 @@ func (w *EntryWriter) writeComment() error {
 	return err
 }
 
-func (w *EntryWriter) splitSection(key []string) ([]string, []string) {
+func (w *EntryWriter) splitKey(key []string) ([]string, []string) {
 	if len(key) == 0 {
 		return nil, nil
 	}
@@ -119,7 +123,7 @@ func (w *EntryWriter) splitSection(key []string) ([]string, []string) {
 	return key[:last], key[last:]
 }
 
-func (w *EntryWriter) needWriteSection(section, key []string, val string) bool {
+func (w *EntryWriter) sectionChanged(section, key []string, val string) bool {
 	sectionChanged := false
 	if len(section) != len(w.section) {
 		sectionChanged = true
@@ -209,7 +213,7 @@ func (w *EntryWriter) WriteEntry(e *Entry) error {
 		return w.err
 	}
 
-	if w.needWriteComment(e.Comment) {
+	if w.commentChanged(e.Comment) {
 		w.comment = e.Comment
 
 		if w.started {
@@ -218,11 +222,11 @@ func (w *EntryWriter) WriteEntry(e *Entry) error {
 
 		withError(w.writeComment)
 		commentWritten = true
-		w.commentIncomplete = true
+		w.inComment = true
 	}
 
-	section, key := w.splitSection(e.Key)
-	if w.needWriteSection(section, key, e.Val) {
+	section, key := w.splitKey(e.Key)
+	if w.sectionChanged(section, key, e.Val) {
 		w.section = section
 
 		if w.started && !commentWritten {
@@ -249,6 +253,6 @@ func (w *EntryWriter) WriteEntry(e *Entry) error {
 	}
 
 	w.started = w.started || commentWritten || sectionWritten || keyWritten || valWritten
-	w.commentIncomplete = w.commentIncomplete && !sectionWritten && !keyWritten && !valWritten
+	w.inComment = w.inComment && !sectionWritten && !keyWritten && !valWritten
 	return w.err
 }
