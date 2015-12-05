@@ -1,11 +1,12 @@
 package keyval
 
 import (
+	"bufio"
 	"errors"
 	"io"
 )
 
-const innerReadBufferSize = 1 << 6
+const InnerReadBufferSize = 1 << 9
 
 type readEntry struct {
 	comment []byte
@@ -14,9 +15,12 @@ type readEntry struct {
 	val     []byte
 }
 
+type ByteReader interface {
+	ReadByte() (byte, error)
+}
+
 type EntryReader struct {
-	reader         io.Reader
-	buffer         []byte
+	reader         ByteReader
 	state          readState
 	entries        []*readEntry
 	escape         bool
@@ -45,10 +49,19 @@ func whitespace(c byte) bool   { return c == SpaceChar || c == TabChar }
 func newline(c byte) bool      { return c == NewlineChar }
 
 func NewEntryReader(r io.Reader) *EntryReader {
-	return &EntryReader{
-		buffer: []byte{innerReadBufferSize},
-		reader: r,
-		state:  stateInitial}
+	if r == nil {
+		return &EntryReader{}
+	}
+
+	er := &EntryReader{state: stateInitial}
+
+	br, ok := r.(ByteReader)
+	if !ok {
+		br = bufio.NewReaderSize(r, InnerReadBufferSize)
+	}
+
+	er.reader = br
+	return er
 }
 
 func (r *EntryReader) checkEscape(c byte) bool {
@@ -206,32 +219,26 @@ func (r *EntryReader) ReadEntry() (*Entry, error) {
 	}
 
 	for {
-		var l int
-		l, r.err = r.reader.Read(r.buffer)
+		var c byte
+		c, r.err = r.reader.ReadByte()
 
-		if r.err != nil && r.err != io.EOF {
+		if r.err != nil && r.err != io.EOF && r.err != io.ErrNoProgress {
 			return nil, r.err
-		}
-
-		if r.err == io.EOF && l == 0 {
-			return r.eofResult()
-		}
-
-		for i := 0; i < l; i++ {
-			r.acceptChar(r.buffer[i])
-		}
-
-		next = r.fetchEntry()
-		if next != nil {
-			return next, nil
 		}
 
 		if r.err == io.EOF {
 			return r.eofResult()
 		}
 
-		if l == 0 {
-			return nil, nil
+		if r.err == io.ErrNoProgress {
+			r.err = nil
+			return nil, io.ErrNoProgress
+		}
+
+		r.acceptChar(c)
+		next := r.fetchEntry()
+		if next != nil {
+			return next, nil
 		}
 	}
 }

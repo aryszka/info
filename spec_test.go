@@ -26,7 +26,7 @@ func TestRead(t *testing.T) {
 		"",
 		true,
 		nil,
-		nil,
+		io.ErrNoProgress,
 	}, {
 
 		// single comment, eof
@@ -40,7 +40,7 @@ func TestRead(t *testing.T) {
 		"# a comment",
 		true,
 		nil,
-		nil,
+		io.ErrNoProgress,
 	}, {
 
 		// single section, eof
@@ -54,7 +54,7 @@ func TestRead(t *testing.T) {
 		"[section]",
 		true,
 		nil,
-		nil,
+		io.ErrNoProgress,
 	}, {
 
 		// single key, eof
@@ -68,14 +68,14 @@ func TestRead(t *testing.T) {
 		"a key",
 		true,
 		nil,
-		nil,
+		io.ErrNoProgress,
 	}, {
 
 		// single key, infinite, with newline
 		"a key\n",
 		true,
 		[]*Entry{{Key: []string{"a key"}}},
-		nil,
+		io.ErrNoProgress,
 	}, {
 
 		// single value, eof
@@ -89,14 +89,14 @@ func TestRead(t *testing.T) {
 		"= a value",
 		true,
 		nil,
-		nil,
+		io.ErrNoProgress,
 	}, {
 
 		// single value, infinite, with newline
 		"= a value\n",
 		true,
 		[]*Entry{{Val: "a value"}},
-		nil,
+		io.ErrNoProgress,
 	}, {
 
 		// key and value, eof
@@ -110,14 +110,14 @@ func TestRead(t *testing.T) {
 		"a key = a value",
 		true,
 		nil,
-		nil,
+		io.ErrNoProgress,
 	}, {
 
 		// key and value, infinite, with new line
 		"a key = a value\n",
 		true,
 		[]*Entry{{Key: []string{"a key"}, Val: "a value"}},
-		nil,
+		io.ErrNoProgress,
 	}, {
 
 		// comment, section, key, value, eof
@@ -139,7 +139,7 @@ func TestRead(t *testing.T) {
 		    a key = a value`,
 		true,
 		nil,
-		nil,
+		io.ErrNoProgress,
 	}, {
 
 		// comment, section, key, value, infinite, with newline
@@ -153,7 +153,7 @@ func TestRead(t *testing.T) {
 			Key:     []string{"a section", "a key"},
 			Val:     "a value",
 		}},
-		nil,
+		io.ErrNoProgress,
 	}, {
 
 		// Anything is a comment between a '#' and a new line.
@@ -465,7 +465,7 @@ func TestRead(t *testing.T) {
 		"a key\n",
 		true,
 		[]*Entry{{Key: []string{"a key"}}},
-		nil,
+		io.ErrNoProgress,
 	}, {
 
 		// Anything is a key, that is before a new line or EOF, and is not a value, a section or a comment.
@@ -486,14 +486,14 @@ func TestRead(t *testing.T) {
 		"a key [a section]",
 		true,
 		[]*Entry{{Key: []string{"a key"}}},
-		nil,
+		io.ErrNoProgress,
 	}, {
 
 		// Anything is a key, that is before a new line or EOF, and is not a value, a section or a comment.
 		"a key # a comment",
 		true,
 		[]*Entry{{Key: []string{"a key"}}},
-		nil,
+		io.ErrNoProgress,
 	}, {
 
 		// A key doesn't need to start in a new line.
@@ -550,7 +550,7 @@ func TestRead(t *testing.T) {
 		"= a value\n",
 		true,
 		[]*Entry{{Val: "a value"}},
-		nil,
+		io.ErrNoProgress,
 	}, {
 
 		// Anything is a value, that is after a '=' and before a new line, EOF, another value, section declaration or a

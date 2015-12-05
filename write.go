@@ -7,18 +7,21 @@ import (
 )
 
 type EntryWriter struct {
-	writer    io.Writer
-	started   bool
-	comment   string
-	inComment bool
-	section   []string
-	err       error
+	MaxSectionDepth int
+	MinKeyDepth     int
+	KnownSections   [][]string
+	writer          io.Writer
+	started         bool
+	comment         string
+	inComment       bool
+	section         []string
+	err             error
 }
 
 var ErrWriteLength = errors.New("write failed: byte count does not match")
 
 func NewEntryWriter(w io.Writer) *EntryWriter {
-	return &EntryWriter{writer: w}
+	return &EntryWriter{writer: w, MaxSectionDepth: 1, MinKeyDepth: 1}
 }
 
 func escapeWrite(b, ec []byte) []byte {

@@ -53,7 +53,7 @@ func TestNothingToRead(t *testing.T) {
 func TestEmptyReader(t *testing.T) {
 	r := NewEntryReader(&infiniteBuffer{bytes.NewBuffer(nil)})
 	e, err := r.ReadEntry()
-	if e != nil || err != nil {
+	if e != nil || (err != nil && err != io.ErrNoProgress) {
 		t.Error("failed not to read", e == nil, err == nil)
 	}
 }
@@ -105,7 +105,7 @@ func TestReadMultipleAndEof(t *testing.T) {
 
 	entry, err = r.ReadEntry()
 	if err != nil || entry == nil || strings.Join(entry.Key, ".") != "key one" || entry.Val != "value one" {
-		t.Error("failed to read")
+		t.Error("failed to read", err == io.EOF, err == io.ErrNoProgress, err == nil, entry == nil)
 	}
 
 	entry, err = r.ReadEntry()
@@ -154,7 +154,7 @@ func TestReadMultipleAndHang(t *testing.T) {
 	}
 
 	entry, err = r.ReadEntry()
-	if err != nil || entry != nil {
+	if (err != nil && err != io.ErrNoProgress) || entry != nil {
 		t.Error("failed to hang")
 	}
 }
@@ -182,7 +182,7 @@ func TestReadMultipleAndHangIncomplete(t *testing.T) {
 	}
 
 	entry, err = r.ReadEntry()
-	if err != nil || entry != nil {
+	if (err != nil && err != io.ErrNoProgress) || entry != nil {
 		t.Error("failed to hang")
 	}
 }
