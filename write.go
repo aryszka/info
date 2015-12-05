@@ -122,26 +122,48 @@ func (w *EntryWriter) splitKey(key []string) ([]string, []string) {
 		return nil, nil
 	}
 
-	last := len(key) - 1
-	return key[:last], key[last:]
-}
+	for _, ks := range w.KnownSections {
+		if len(ks) > len(key) {
+			continue
+		}
 
-func (w *EntryWriter) sectionChanged(section, key []string, val string) bool {
-	sectionChanged := false
-	if len(section) != len(w.section) {
-		sectionChanged = true
-	}
-
-	if !sectionChanged {
-		for i, s := range section {
-			if s != w.section[i] {
-				sectionChanged = true
+		known := true
+		for i, sn := range ks {
+			if sn != key[i] {
+				known = false
 				break
 			}
 		}
+
+		if known {
+			return ks, key[len(ks):]
+		}
 	}
 
-	return sectionChanged && (hasKey(key) || len(val) > 0)
+	if len(key) < w.MinKeyDepth {
+		return nil, key
+	}
+
+	sectionDepth := w.MaxSectionDepth
+	if len(key)-sectionDepth < w.MinKeyDepth {
+		sectionDepth = len(key) - w.MinKeyDepth
+	}
+
+	return key[:sectionDepth], key[sectionDepth:]
+}
+
+func (w *EntryWriter) sectionChanged(section []string) bool {
+	if len(section) != len(w.section) {
+		return true
+	}
+
+	for i, sn := range section {
+		if sn != w.section[i] {
+			return true
+		}
+	}
+
+	return false
 }
 
 func (w *EntryWriter) writeKeyEscaped(key []string, wesc, besc []byte) error {
@@ -173,10 +195,6 @@ func (w *EntryWriter) writeSection() error {
 	}
 
 	return w.write(CloseSectionChar)
-}
-
-func hasKey(key []string) bool {
-	return len(key) > 0
 }
 
 func (w *EntryWriter) writeKey(key []string) error {
@@ -229,7 +247,7 @@ func (w *EntryWriter) WriteEntry(e *Entry) error {
 	}
 
 	section, key := w.splitKey(e.Key)
-	if w.sectionChanged(section, key, e.Val) {
+	if w.sectionChanged(section) && (len(key) != 0 || len(e.Val) != 0) {
 		w.section = section
 
 		if w.started && !commentWritten {
@@ -240,8 +258,7 @@ func (w *EntryWriter) WriteEntry(e *Entry) error {
 		sectionWritten = true
 	}
 
-	hkey := hasKey(key)
-	if hkey {
+	if len(key) != 0 {
 		withError(func() error { return w.writeKey(key) })
 		keyWritten = true
 	}

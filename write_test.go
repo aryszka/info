@@ -117,6 +117,80 @@ func TestReturnSameErrorOnRepeatedWriteCall(t *testing.T) {
 	}
 }
 
+func TestSectionOptions(t *testing.T) {
+	for i, ti := range []struct {
+		knownSections   [][]string
+		maxSectionDepth int
+		minKeyDepth     int
+		entries         []*Entry
+		output          string
+	}{{
+		nil,
+		1,
+		1,
+		nil,
+		"",
+	}, {
+		[][]string{{"list1"}},
+		1,
+		1,
+		[]*Entry{
+			{Comment: "a list of values", Key: []string{"list1"}, Val: "one"},
+			{Comment: "a list of values", Key: []string{"list1"}, Val: "two"},
+			{Comment: "a list of values", Key: []string{"list1"}, Val: "three"}},
+		"# a list of values\n[list1]\n= one\n= two\n= three\n",
+	}, {
+		nil,
+		3,
+		1,
+		[]*Entry{
+			{Key: []string{"section1", "key1"}, Val: "one"},
+			{Key: []string{"section1", "subsection1", "key2"}, Val: "two"},
+			{Key: []string{"section1", "subsection2", "subsub1", "key3"}, Val: "three"},
+			{Key: []string{"section1", "subsection3", "subsub2", "key4", "subkey1"}, Val: "four"}},
+		"[section1]\n" +
+			"key1 = one\n\n" +
+			"[section1.subsection1]\n" +
+			"key2 = two\n\n" +
+			"[section1.subsection2.subsub1]\n" +
+			"key3 = three\n\n" +
+			"[section1.subsection3.subsub2]\n" +
+			"key4.subkey1 = four\n",
+	}, {
+		nil,
+		2,
+		3,
+		[]*Entry{
+			{Key: []string{"key1", "subkey1"}, Val: "one"},
+			{Key: []string{"key2", "subkey2", "subsub1"}, Val: "two"},
+			{Key: []string{"section1", "key3", "subkey3", "subsub2"}, Val: "three"},
+			{Key: []string{"section1", "subsection1", "key4", "subkey4", "subsub3"}, Val: "four"}},
+		"key1.subkey1 = one\n" +
+			"key2.subkey2.subsub1 = two\n\n" +
+			"[section1]\n" +
+			"key3.subkey3.subsub2 = three\n\n" +
+			"[section1.subsection1]\n" +
+			"key4.subkey4.subsub3 = four\n",
+	}} {
+		buf := bytes.NewBuffer(nil)
+		w := NewEntryWriter(buf)
+
+		w.KnownSections = ti.knownSections
+		w.MaxSectionDepth = ti.maxSectionDepth
+		w.MinKeyDepth = ti.minKeyDepth
+
+		for _, e := range ti.entries {
+			w.WriteEntry(e)
+		}
+
+		if buf.String() != ti.output {
+			t.Error(i, "failed to write correct output")
+			t.Log(ti.output)
+			t.Log(buf.String())
+		}
+	}
+}
+
 func TestWrite(t *testing.T) {
 	for i, ti := range []struct {
 		entries []*Entry
