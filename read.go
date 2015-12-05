@@ -5,7 +5,7 @@ import (
 	"io"
 )
 
-const DefaultReadBufferSize = 1 << 18
+const innerReadBufferSize = 1 << 6
 
 type readEntry struct {
 	comment []byte
@@ -15,7 +15,6 @@ type readEntry struct {
 }
 
 type EntryReader struct {
-	BufferSize     int
 	reader         io.Reader
 	buffer         []byte
 	state          readState
@@ -47,9 +46,9 @@ func newline(c byte) bool      { return c == NewlineChar }
 
 func NewEntryReader(r io.Reader) *EntryReader {
 	return &EntryReader{
-		BufferSize: DefaultReadBufferSize,
-		reader:     r,
-		state:      stateInitial}
+		buffer: []byte{innerReadBufferSize},
+		reader: r,
+		state:  stateInitial}
 }
 
 func (r *EntryReader) checkEscape(c byte) bool {
@@ -188,23 +187,6 @@ func (r *EntryReader) eofResult() (*Entry, error) {
 	return last, err
 }
 
-func (r *EntryReader) updateBuffer() {
-	if r.BufferSize > 0 && len(r.buffer) == r.BufferSize {
-		return
-	}
-
-	if r.BufferSize == 0 && len(r.buffer) == 1 {
-		return
-	}
-
-	bsize := r.BufferSize
-	if bsize == 0 {
-		bsize = 1
-	}
-
-	r.buffer = make([]byte, bsize)
-}
-
 func (r *EntryReader) ReadEntry() (*Entry, error) {
 	if r.reader == nil {
 		return nil, nil
@@ -223,11 +205,10 @@ func (r *EntryReader) ReadEntry() (*Entry, error) {
 		return r.eofResult()
 	}
 
-	r.updateBuffer()
-
 	for {
 		var l int
 		l, r.err = r.reader.Read(r.buffer)
+
 		if r.err != nil && r.err != io.EOF {
 			return nil, r.err
 		}
@@ -237,13 +218,7 @@ func (r *EntryReader) ReadEntry() (*Entry, error) {
 		}
 
 		for i := 0; i < l; i++ {
-			c := r.buffer[i]
-
-			if r.checkEscape(c) {
-				continue
-			}
-
-			r.appendChar(c)
+			r.acceptChar(r.buffer[i])
 		}
 
 		next = r.fetchEntry()

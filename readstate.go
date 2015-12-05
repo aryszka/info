@@ -18,25 +18,22 @@ const (
 	stateValueOrElse
 )
 
-func (r *EntryReader) appendChar(c byte) {
+func (r *EntryReader) acceptChar(c byte) {
+	if r.checkEscape(c) {
+		return
+	}
+
 	if r.escape {
 		switch r.state {
-		case stateInitial:
+		case stateInitial, stateContinueCommentOrElse:
 			r.state = stateKey
 			r.appendKey(c)
-		case stateCommentInitial:
+		case stateCommentInitial, stateCommentOrElse:
 			r.state = stateComment
 			r.commentWhitespace()
 			r.appendComment(c)
 		case stateComment:
 			r.appendComment(c)
-		case stateCommentOrElse:
-			r.state = stateComment
-			r.commentWhitespace()
-			r.appendComment(c)
-		case stateContinueCommentOrElse:
-			r.state = stateKey
-			r.appendKey(c)
 		case stateSectionInitial, stateSection:
 			r.state = stateSection
 			r.appendSection(c)

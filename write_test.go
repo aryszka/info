@@ -117,31 +117,6 @@ func TestReturnSameErrorOnRepeatedWriteCall(t *testing.T) {
 	}
 }
 
-func TestReturnSameErrorOnRepeatedWriteCallBuffered(t *testing.T) {
-	iw := &errWriter{}
-	w := NewEntryWriter(iw)
-	w.BufferSize = 1 << 2
-	var err error
-
-	err = w.WriteEntry(&Entry{Key: []string{"a key"}})
-	if err != errExpectedFailingRead {
-		t.Error("failed to fail")
-	}
-
-	err = w.WriteEntry(&Entry{Key: []string{"a key"}})
-	if err != errExpectedFailingRead || iw.writeCount != 1 {
-		t.Error("failed to store previous failure")
-	}
-
-	err = w.Flush()
-	if err != errExpectedFailingRead || iw.writeCount != 1 {
-		t.Error("failed to store previous failure")
-	}
-}
-
-func TestBufferedWrite(t *testing.T) {
-}
-
 func TestWrite(t *testing.T) {
 	for i, ti := range []struct {
 		entries []*Entry

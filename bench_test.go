@@ -22,11 +22,6 @@ func BenchmarkReadKeyval(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		r := NewEntryReader(buf)
 
-		// to how much remembering the encoding/json code,
-		// a similar buffer size is used there. This value
-		// can be out-of-date.
-		r.BufferSize = 1 << 9
-
 		var collect []*Entry
 		for {
 			entry, err := r.ReadEntry()
@@ -37,7 +32,6 @@ func BenchmarkReadKeyval(b *testing.B) {
 
 			if entry != nil {
 				collect = append(collect, entry)
-				// w.WriteEntry(entry)
 			}
 
 			if err == io.EOF {
@@ -47,7 +41,7 @@ func BenchmarkReadKeyval(b *testing.B) {
 	}
 }
 
-func BenchmarkReadJson(b *testing.B) {
+func BenchmarkCompareReadJson(b *testing.B) {
 	all, err := ioutil.ReadFile("test.json")
 	if err != nil {
 		b.Error(err)
@@ -67,7 +61,7 @@ func BenchmarkReadJson(b *testing.B) {
 	}
 }
 
-func BenchmarkReadYaml(b *testing.B) {
+func BenchmarkCompareReadYaml(b *testing.B) {
 	all, err := ioutil.ReadFile("test.yaml")
 	if err != nil {
 		b.Error(err)
@@ -81,40 +75,6 @@ func BenchmarkReadYaml(b *testing.B) {
 		if err := yaml.Unmarshal(all, &o); err != nil && err != io.EOF {
 			b.Error(err)
 			break
-		}
-	}
-}
-
-func BenchmarkReadNoAlloc(b *testing.B) {
-	all, err := ioutil.ReadFile("test.k")
-	if err != nil {
-		b.Error(err)
-		return
-	}
-
-	buf := bytes.NewBuffer(all)
-	ibuf := make([]byte, DefaultReadBufferSize)
-	b.ResetTimer()
-
-	for i := 0; i < b.N; i++ {
-		r := NewEntryReader(buf)
-		r.buffer = ibuf
-
-		var collect []*Entry
-		for {
-			entry, err := r.ReadEntry()
-			if err != nil && err != io.EOF {
-				b.Error(err)
-				break
-			}
-
-			if entry != nil {
-				collect = append(collect, entry)
-			}
-
-			if err == io.EOF {
-				break
-			}
 		}
 	}
 }

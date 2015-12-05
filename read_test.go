@@ -54,7 +54,7 @@ func TestEmptyReader(t *testing.T) {
 	r := NewEntryReader(&infiniteBuffer{bytes.NewBuffer(nil)})
 	e, err := r.ReadEntry()
 	if e != nil || err != nil {
-		t.Error("failed not to read")
+		t.Error("failed not to read", e == nil, err == nil)
 	}
 }
 
@@ -63,32 +63,6 @@ func TestEmptyReaderEof(t *testing.T) {
 	e, err := r.ReadEntry()
 	if e != nil || err != io.EOF {
 		t.Error("failed to read eof")
-	}
-}
-
-func TestSmallBufferSize(t *testing.T) {
-	buf := bytes.NewBufferString(`
-        just a long piece of text\
-        spanning multiple lines,\
-        more lines and bytes than\
-        the reader buffer size`)
-	r := NewEntryReader(buf)
-	r.BufferSize = 2
-	for {
-		entry, err := r.ReadEntry()
-		if err != nil && err != io.EOF {
-			t.Error(err)
-			return
-		}
-
-		if entry == nil && err != io.EOF {
-			t.Error("failed to read long entry")
-			return
-		}
-
-		if err == io.EOF {
-			return
-		}
 	}
 }
 
@@ -108,76 +82,6 @@ func TestReturnsSameErrorOnReadRepeatedCall(t *testing.T) {
 	}
 }
 
-func TestSetDefaultReaderBufferSize(t *testing.T) {
-	ir := &measureReader{}
-	r := NewEntryReader(ir)
-
-	if _, err := r.ReadEntry(); err != nil {
-		t.Error(err)
-		return
-	}
-
-	if ir.lastReadSize != DefaultReadBufferSize {
-		t.Error("failed to read with the right buffer size")
-	}
-}
-
-func TestSetInitialReaderBufferSize(t *testing.T) {
-	ir := &measureReader{}
-	r := NewEntryReader(ir)
-	r.BufferSize = 42
-
-	if _, err := r.ReadEntry(); err != nil {
-		t.Error(err)
-		return
-	}
-
-	if ir.lastReadSize != 42 {
-		t.Error("failed to read with the right buffer size")
-	}
-}
-
-func TestSetMinimalReaderBufferSize(t *testing.T) {
-	ir := &measureReader{}
-	r := NewEntryReader(ir)
-	r.BufferSize = 0
-
-	if _, err := r.ReadEntry(); err != nil {
-		t.Error(err)
-		return
-	}
-
-	if ir.lastReadSize != 1 {
-		t.Error("failed to read with minimal buffer size")
-	}
-}
-
-func TestUpdateReaderBufferSize(t *testing.T) {
-	ir := &measureReader{}
-	r := NewEntryReader(ir)
-	r.BufferSize = 36
-
-	if _, err := r.ReadEntry(); err != nil {
-		t.Error(err)
-		return
-	}
-
-	if ir.lastReadSize != 36 {
-		t.Error("failed to read with the right buffer size")
-	}
-
-	r.BufferSize = 42
-
-	if _, err := r.ReadEntry(); err != nil {
-		t.Error(err)
-		return
-	}
-
-	if ir.lastReadSize != 42 {
-		t.Error("failed to read with the right buffer size")
-	}
-}
-
 func TestUninitializedReader(t *testing.T) {
 	r := &EntryReader{}
 	entry, err := r.ReadEntry()
@@ -193,7 +97,6 @@ func TestReadMultipleAndEof(t *testing.T) {
         key three = value three
         `)
 	r := NewEntryReader(buf)
-	r.BufferSize = 4
 
 	var (
 		entry *Entry
@@ -229,7 +132,6 @@ func TestReadMultipleAndHang(t *testing.T) {
         key three = value three
         `)}
 	r := NewEntryReader(buf)
-	r.BufferSize = 4
 
 	var (
 		entry *Entry
@@ -263,7 +165,6 @@ func TestReadMultipleAndHangIncomplete(t *testing.T) {
         key two = value two
         key three = value three`)}
 	r := NewEntryReader(buf)
-	r.BufferSize = 4
 
 	var (
 		entry *Entry

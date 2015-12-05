@@ -10,8 +10,6 @@ and the order of receiving is the same of sending.
 
 
 The functions in the package are not synchronized.
-The package reader and writer implements only simplistic buffering, for more advanced usage it is better to pass
-in a *bufio.Reader and *bufio.Writer when required, and set the BufferSize to 0.
 
 
 Specification

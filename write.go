@@ -7,10 +7,8 @@ import (
 )
 
 type EntryWriter struct {
-	BufferSize        int
 	writer            io.Writer
 	started           bool
-	buffer            []byte
 	comment           string
 	commentIncomplete bool
 	section           []string
@@ -20,7 +18,7 @@ type EntryWriter struct {
 var ErrWriteLength = errors.New("write failed: byte count does not match")
 
 func NewEntryWriter(w io.Writer) *EntryWriter {
-	return &EntryWriter{BufferSize: 0, writer: w}
+	return &EntryWriter{writer: w}
 }
 
 func escapeWrite(b, ec []byte) []byte {
@@ -57,34 +55,13 @@ func escapeOutput(b, wec, lec, tec []byte) []byte {
 	return escapeBoundaries(escapeWrite(b, wec), lec, tec)
 }
 
-func (w *EntryWriter) writeAll(b []byte) error {
+func (w *EntryWriter) write(b ...byte) error {
 	if l, err := w.writer.Write(b); err != nil {
 		return err
 	} else if l != len(b) {
 		return ErrWriteLength
 	}
 
-	return nil
-}
-
-func (w *EntryWriter) writeBuffer() error {
-	for len(w.buffer) > 0 && len(w.buffer) >= w.BufferSize {
-		if err := w.writeAll(w.buffer[0:w.BufferSize]); err != nil {
-			return err
-		}
-
-		w.buffer = w.buffer[w.BufferSize:]
-	}
-
-	return nil
-}
-
-func (w *EntryWriter) write(b ...byte) error {
-	if w.BufferSize <= 0 {
-		return w.writeAll(b)
-	}
-
-	w.buffer = append(w.buffer, b...)
 	return nil
 }
 
@@ -273,20 +250,5 @@ func (w *EntryWriter) WriteEntry(e *Entry) error {
 
 	w.started = w.started || commentWritten || sectionWritten || keyWritten || valWritten
 	w.commentIncomplete = w.commentIncomplete && !sectionWritten && !keyWritten && !valWritten
-
-	withError(w.writeBuffer)
-	return w.err
-}
-
-func (w *EntryWriter) Flush() error {
-	if w.writer == nil || w.err != nil {
-		return w.err
-	}
-
-	if w.err = w.writeBuffer(); w.err != nil {
-		return w.err
-	}
-
-	w.err = w.writeAll(w.buffer)
 	return w.err
 }
