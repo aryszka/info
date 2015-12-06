@@ -23,10 +23,10 @@ func (er *errWriter) Write(b []byte) (int, error) {
 	}
 
 	if er.writeCount <= 1 {
-		return 0, errExpectedFailingRead
+		return 0, errExpectedFailingWrite
 	}
 
-	return 0, errUnexpectedFailingRead
+	return 0, errUnexpectedFailingWrite
 }
 
 func TestEscapeWrite(t *testing.T) {
@@ -107,12 +107,12 @@ func TestReturnSameErrorOnRepeatedWriteCall(t *testing.T) {
 	var err error
 
 	err = w.WriteEntry(&Entry{Key: []string{"a key"}})
-	if err != errExpectedFailingRead {
+	if err != errExpectedFailingWrite {
 		t.Error("failed to fail")
 	}
 
 	err = w.WriteEntry(&Entry{Key: []string{"a key"}})
-	if err != errExpectedFailingRead || iw.writeCount != 1 {
+	if err != errExpectedFailingWrite || iw.writeCount != 1 {
 		t.Error("failed to store previous failure")
 	}
 }
