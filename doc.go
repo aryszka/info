@@ -3,7 +3,11 @@ Package keyval implements a human readable, streamable, hierarchical data format
 
 
 TODO:
-- discarding a comment, when the current section is not empty
+- clarify the case of multi-part, empty keys, in the reader/writer/buffer
+- actually, clarify the whole handling of the empty keys and values
+- read and write of the empty keys and values should be the same
+- it is not really a buffer, because reading from it doesn't empty it
+- use the value of the last entry
 
 
 Based on the INI file format, but (tries to be) well defined and support hierarchical data structures.
@@ -14,6 +18,9 @@ and the order of receiving is the same of sending.
 
 
 The functions in the package are not synchronized.
+
+
+The possible evaluation methods of the same keys.
 
 
 Specification
