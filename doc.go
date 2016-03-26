@@ -8,6 +8,7 @@ TODO:
 - read and write of the empty keys and values should be the same
 - it is not really a buffer, because reading from it doesn't empty it
 - use the value of the last entry
+- finalize the accessor interface when already finished the rest of the functionality
 
 
 Based on the INI file format, but (tries to be) well defined and support hierarchical data structures.
@@ -21,6 +22,10 @@ The functions in the package are not synchronized.
 
 
 The possible evaluation methods of the same keys.
+
+
+CAST: Continuously Applied State Transfer
+"Consistency is the last refuge of the unimaginative." Oscar Wilde
 
 
 Specification

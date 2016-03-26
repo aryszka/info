@@ -1,5 +1,7 @@
 package keyval
 
+import "strings"
+
 const (
 	EscapeChar       = '\\'
 	KeySeparatorChar = '.'
@@ -45,3 +47,25 @@ var (
 
 	escapeComment = []byte{EscapeChar}
 )
+
+func JoinKey(key []string) string {
+	return strings.Join(key, ".")
+}
+
+func SplitKey(key string) []string {
+	return strings.Split(key, ".")
+}
+
+func KeyEq(left, right []string) bool {
+	if len(left) != len(right) {
+		return false
+	}
+
+	for i, k := range left {
+		if k != right[i] {
+			return false
+		}
+	}
+
+	return true
+}
