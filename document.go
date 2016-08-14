@@ -238,7 +238,7 @@ func (d *Document) SetComment(key string, comment string) {
 // maybe better if this is not here?
 // it should be, because it should be the default decode
 func (d *Document) Map() map[string][]interface{} {
-    return nil
+	return nil
 }
 
 func (d *Document) SortFunc(less CompareFunc) {
@@ -257,56 +257,56 @@ func (d *Document) TruncateEnd(n int) {
 }
 
 func (d *Document) Copy() *Document {
-    c := &Document{}
-    c.entries = make([]*Entry, len(d.entries))
-    copy(c.entries, d.entries)
-    return c
+	c := &Document{}
+	c.entries = make([]*Entry, len(d.entries))
+	copy(c.entries, d.entries)
+	return c
 }
 
 func (d *Document) TruncateEffective() {
-    found := make(map[string]bool)
-    for i := d.Len() - 1; i >= 0; i-- {
-        e := d.EntryAt(i)
-        if e == nil {
-            d.ReplaceEntry(i, 1)
-            continue
-        }
+	found := make(map[string]bool)
+	for i := d.Len() - 1; i >= 0; i-- {
+		e := d.EntryAt(i)
+		if e == nil {
+			d.ReplaceEntry(i, 1)
+			continue
+		}
 
-        ks := JoinKey(e.Key)
-        if found[ks] {
-            d.ReplaceEntry(i, 1)
-        } else {
-            found[ks] = true
-        }
-    }
+		ks := JoinKey(e.Key)
+		if found[ks] {
+			d.ReplaceEntry(i, 1)
+		} else {
+			found[ks] = true
+		}
+	}
 }
 
 func (d *Document) Reset() {
-    d.ReplaceEntry(0, d.Len())
+	d.ReplaceEntry(0, d.Len())
 }
 
 func (d *Document) Bytes() []byte {
-    return nil
+	return nil
 }
 
 func (d *Document) String() string {
-    return ""
+	return ""
 }
 
 func (d *Document) Json() []byte {
-    return nil
+	return nil
 }
 
 func (d *Document) Yaml() []byte {
-    return nil
+	return nil
 }
 
 func (d *Document) MarshalJSON() ([]byte, error) {
-    return nil, nil
+	return nil, nil
 }
 
 func (d *Document) MarshalYAML() ([]byte, error) {
-    return nil, nil
+	return nil, nil
 }
 
 func (d *Document) ReadAllEntries(r *EntryReader) error {

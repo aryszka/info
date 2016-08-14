@@ -4,7 +4,7 @@ import "strings"
 
 const (
 	EscapeChar       = '\\'
-	KeySeparatorChar = '.'
+	KeySeparatorChar = '/'
 	StartValueChar   = '='
 	OpenSectionChar  = '['
 	CloseSectionChar = ']'

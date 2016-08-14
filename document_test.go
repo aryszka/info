@@ -117,26 +117,26 @@ func TestWriteAll(t *testing.T) {
 	}
 }
 
-func TestGetKeys(t *testing.T) {
-	buf := &Document{}
-	buf.AppendEntry(&Entry{Key: []string{"some key"}})
-	buf.AppendEntry(&Entry{Key: []string{"some key", "some sub key"}})
-	buf.AppendEntry(&Entry{Key: []string{"some key", "some sub key"}})
-
-	keys := buf.Keys()
-
-	if len(keys) != 2 {
-		t.Error("invalid number of keys")
-	}
-
-	if len(keys[0]) != 1 || keys[0][0] != "some key" {
-		t.Error("invalid key")
-	}
-
-	if len(keys[1]) != 2 || keys[1][0] != "some key" || keys[1][1] != "some sub key" {
-		t.Error("invalid key")
-	}
-}
+// func TestGetKeys(t *testing.T) {
+// 	buf := &Document{}
+// 	buf.AppendEntry(&Entry{Key: []string{"some key"}})
+// 	buf.AppendEntry(&Entry{Key: []string{"some key", "some sub key"}})
+// 	buf.AppendEntry(&Entry{Key: []string{"some key", "some sub key"}})
+//
+// 	keys := buf.Keys()
+//
+// 	if len(keys) != 2 {
+// 		t.Error("invalid number of keys")
+// 	}
+//
+// 	if len(keys[0]) != 1 || keys[0][0] != "some key" {
+// 		t.Error("invalid key")
+// 	}
+//
+// 	if len(keys[1]) != 2 || keys[1][0] != "some key" || keys[1][1] != "some sub key" {
+// 		t.Error("invalid key")
+// 	}
+// }
 
 func TestKeysCloned(t *testing.T) {
 	buf := &Document{}
@@ -173,23 +173,23 @@ func TestGetEntries(t *testing.T) {
 	}
 }
 
-func TestEntrySliceCloned(t *testing.T) {
-	buf := &Document{}
-	buf.AppendEntry(&Entry{Key: []string{"key1"}, Val: "val1"})
-	buf.AppendEntry(&Entry{Key: []string{"key2"}, Val: "val2"})
-	entries1 := buf.Entries()
-	entries2 := buf.Entries()
-	entries1[0] = nil
-	if entries2[0] == nil {
-		t.Error("failed copy entry slice")
-	}
-}
+// func TestEntrySliceCloned(t *testing.T) {
+// 	buf := &Document{}
+// 	buf.AppendEntry(&Entry{Key: []string{"key1"}, Val: "val1"})
+// 	buf.AppendEntry(&Entry{Key: []string{"key2"}, Val: "val2"})
+// 	entries1 := buf.Entries()
+// 	entries2 := buf.Entries()
+// 	entries1[0] = nil
+// 	if entries2[0] == nil {
+// 		t.Error("failed copy entry slice")
+// 	}
+// }
 
-func TestAppendEntry(t *testing.T) {
-	buf := &Document{}
-	entry := &Entry{Key: []string{"key"}}
-	buf.AppendEntry(entry)
-	if buf.Entry(0) != entry {
-		t.Error("failed to append entry")
-	}
-}
+// func TestAppendEntry(t *testing.T) {
+// 	buf := &Document{}
+// 	entry := &Entry{Key: []string{"key"}}
+// 	buf.AppendEntry(entry)
+// 	if buf.Entry(0) != entry {
+// 		t.Error("failed to append entry")
+// 	}
+// }

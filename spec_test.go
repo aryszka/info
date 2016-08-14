@@ -372,14 +372,14 @@ func TestRead(t *testing.T) {
 	}, {
 
 		// Section declarations, just like keys, can be separated by '.', defining hierarchical structure of sections.
-		"[ a section . hierarchy. multiple.levels ]",
+		"[ a section / hierarchy/ multiple/levels ]",
 		false,
 		[]*Entry{{Key: []string{"a section", "hierarchy", "multiple", "levels"}}},
 		io.EOF,
 	}, {
 
 		// Whitespace around '.' separators is trimmed.
-		"[ section \n \t . \n \t hierarchy]",
+		"[ section \n \t / \n \t hierarchy]",
 		false,
 		[]*Entry{{Key: []string{"section", "hierarchy"}}},
 		io.EOF,
@@ -441,9 +441,9 @@ func TestRead(t *testing.T) {
 	}, {
 
 		// Escaped '\', '.' and ']' in a section declaration.
-		"[section with escaped \\\\, \\. and \\]]",
+		"[section with escaped \\\\, \\/ and \\]]",
 		false,
-		[]*Entry{{Key: []string{"section with escaped \\, . and ]"}}},
+		[]*Entry{{Key: []string{"section with escaped \\, / and ]"}}},
 		io.EOF,
 	}, {
 
@@ -518,23 +518,23 @@ func TestRead(t *testing.T) {
 	}, {
 
 		// Keys can be separated by '.', defining hierarchical structure of keys.
-		"a.structured.key",
+		"a/structured/key",
 		false,
 		[]*Entry{{Key: []string{"a", "structured", "key"}}},
 		io.EOF,
 	}, {
 
 		// Whitespace around '.' separators is trimmed.
-		" \t a \t . \t structured \t . \t key",
+		" \t a \t / \t structured \t / \t key",
 		false,
 		[]*Entry{{Key: []string{"a", "structured", "key"}}},
 		io.EOF,
 	}, {
 
-		// Only '\', '.', '=', '[', '#' and '\n' can be escaped in a key.
-		"key with escaped \\\\, \\., \\=, \\[, \\# and \\\nin it",
+		// Only '\', '/', '=', '[', '#' and '\n' can be escaped in a key.
+		"key with escaped \\\\, \\/, \\=, \\[, \\# and \\\nin it",
 		false,
-		[]*Entry{{Key: []string{"key with escaped \\, ., =, [, # and \nin it"}}},
+		[]*Entry{{Key: []string{"key with escaped \\, /, =, [, # and \nin it"}}},
 		io.EOF,
 	}, {
 
@@ -673,7 +673,7 @@ func TestRead(t *testing.T) {
 				return
 			}
 
-			if strings.Join(entry.Key, ".") != strings.Join(checkEntry.Key, ".") {
+			if strings.Join(entry.Key, "/") != strings.Join(checkEntry.Key, "/") {
 				t.Error(i, j, "invalid entry key")
 				t.Log(strings.Join(entry.Key, "."))
 				t.Log(strings.Join(checkEntry.Key, "."))
